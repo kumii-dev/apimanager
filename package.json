@@ -1,0 +1,41 @@
+{
+  "name": "kumii-api-gateway-monorepo",
+  "version": "1.0.0",
+  "description": "KUMII API Management & Routing System - Production-grade monorepo",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n \"GATEWAY,ADMIN\" -c \"blue.bold,magenta.bold\" \"npm run dev:gateway\" \"npm run dev:admin\"",
+    "dev:gateway": "cd gateway-server && npm run dev",
+    "dev:admin": "cd admin-client && npm run dev",
+    "start": "npm run dev",
+    "install:all": "npm install && cd gateway-server && npm install && cd ../admin-client && npm install",
+    "build:all": "npm run build:gateway && npm run build:admin",
+    "build:gateway": "cd gateway-server && npm run build",
+    "build:admin": "cd admin-client && npm run build",
+    "clean": "rm -rf gateway-server/node_modules gateway-server/dist admin-client/node_modules admin-client/dist node_modules",
+    "lint": "echo 'Running lint checks...' && cd gateway-server && npm run lint && cd ../admin-client && npm run lint",
+    "test": "echo 'Running tests...' && cd gateway-server && npm test && cd ../admin-client && npm test"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kumii-dev/apimanager.git"
+  },
+  "keywords": [
+    "api-gateway",
+    "api-management",
+    "microservices",
+    "routing",
+    "security",
+    "iso27001",
+    "owasp"
+  ],
+  "author": "KUMII Platform",
+  "license": "PROPRIETARY"
+}

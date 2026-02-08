@@ -111,7 +111,7 @@ export const rateLimitMiddleware = (options: RateLimitOptions = {}) => {
   if (redisClient) {
     limiterOptions.store = new RedisStore({
       // @ts-expect-error - Types mismatch between redis and rate-limit-redis
-      client: redisClient,
+      sendCommand: (...args: string[]) => redisClient.sendCommand(args),
       prefix: 'rl:',
     });
   }
