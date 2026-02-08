@@ -26,31 +26,6 @@ CREATE TABLE IF NOT EXISTS tenants (
 CREATE INDEX idx_tenants_slug ON tenants(slug);
 CREATE INDEX idx_tenants_status ON tenants(status);
 
--- Enable RLS
-ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
-
--- RLS Policies for tenants
-CREATE POLICY "platform_admins_all_tenants"
-  ON tenants
-  FOR ALL
-  USING (
-    auth.uid() IN (
-      SELECT id FROM profiles
-      WHERE role = 'platform_admin'
-    )
-  );
-
-CREATE POLICY "tenant_admins_own_tenant"
-  ON tenants
-  FOR SELECT
-  USING (
-    id IN (
-      SELECT tenant_id FROM profiles
-      WHERE id = auth.uid()
-      AND role IN ('tenant_admin', 'staff')
-    )
-  );
-
 -- ============================================================
 -- 2. PROFILES TABLE
 -- User identity and RBAC (ISO 27001 A.5.1, A.9)
@@ -71,36 +46,6 @@ CREATE TABLE IF NOT EXISTS profiles (
 CREATE INDEX idx_profiles_tenant_id ON profiles(tenant_id);
 CREATE INDEX idx_profiles_role ON profiles(role);
 CREATE INDEX idx_profiles_email ON profiles(email);
-
--- Enable RLS
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-
--- RLS Policies for profiles
-CREATE POLICY "users_read_own_profile"
-  ON profiles
-  FOR SELECT
-  USING (auth.uid() = id);
-
-CREATE POLICY "platform_admins_all_profiles"
-  ON profiles
-  FOR ALL
-  USING (
-    auth.uid() IN (
-      SELECT id FROM profiles
-      WHERE role = 'platform_admin'
-    )
-  );
-
-CREATE POLICY "tenant_admins_own_tenant_profiles"
-  ON profiles
-  FOR ALL
-  USING (
-    tenant_id IN (
-      SELECT tenant_id FROM profiles
-      WHERE id = auth.uid()
-      AND role = 'tenant_admin'
-    )
-  );
 
 -- ============================================================
 -- 3. API CONNECTORS TABLE
@@ -132,31 +77,6 @@ CREATE INDEX idx_connectors_type ON api_connectors(type);
 CREATE INDEX idx_connectors_is_active ON api_connectors(is_active);
 CREATE INDEX idx_connectors_created_by ON api_connectors(created_by);
 
--- Enable RLS
-ALTER TABLE api_connectors ENABLE ROW LEVEL SECURITY;
-
--- RLS Policies for api_connectors
-CREATE POLICY "platform_admins_all_connectors"
-  ON api_connectors
-  FOR ALL
-  USING (
-    auth.uid() IN (
-      SELECT id FROM profiles
-      WHERE role = 'platform_admin'
-    )
-  );
-
-CREATE POLICY "tenant_admins_own_tenant_connectors"
-  ON api_connectors
-  FOR ALL
-  USING (
-    tenant_id IN (
-      SELECT tenant_id FROM profiles
-      WHERE id = auth.uid()
-      AND role IN ('tenant_admin', 'staff')
-    )
-  );
-
 -- ============================================================
 -- 4. API CONNECTOR SECRETS TABLE
 -- Encrypted secrets storage (ISO 27001 A.10.1 - Cryptography)
@@ -180,24 +100,6 @@ CREATE TABLE IF NOT EXISTS api_connector_secrets (
 
 CREATE INDEX idx_secrets_connector_id ON api_connector_secrets(connector_id);
 CREATE INDEX idx_secrets_version ON api_connector_secrets(connector_id, version DESC);
-
--- Enable RLS with STRICT security
-ALTER TABLE api_connector_secrets ENABLE ROW LEVEL SECURITY;
-
--- CRITICAL: Secrets accessible only via service role
--- No direct user access - gateway server decrypts using service role
-CREATE POLICY "service_role_only_secrets"
-  ON api_connector_secrets
-  FOR ALL
-  USING (
-    -- This policy effectively denies all user access
-    -- Only service_role (used by gateway server) can access
-    FALSE
-  );
-
--- Note: Gateway server uses service role key to bypass RLS
--- This implements defense in depth: even if auth is compromised,
--- secrets cannot be read directly by users
 
 -- ============================================================
 -- 5. API ROUTES TABLE
@@ -244,31 +146,6 @@ CREATE INDEX idx_routes_is_active ON api_routes(is_active);
 CREATE INDEX idx_routes_priority ON api_routes(priority DESC);
 CREATE INDEX idx_routes_path_pattern ON api_routes(path_pattern);
 
--- Enable RLS
-ALTER TABLE api_routes ENABLE ROW LEVEL SECURITY;
-
--- RLS Policies for api_routes
-CREATE POLICY "platform_admins_all_routes"
-  ON api_routes
-  FOR ALL
-  USING (
-    auth.uid() IN (
-      SELECT id FROM profiles
-      WHERE role = 'platform_admin'
-    )
-  );
-
-CREATE POLICY "tenant_admins_own_tenant_routes"
-  ON api_routes
-  FOR ALL
-  USING (
-    tenant_id IN (
-      SELECT tenant_id FROM profiles
-      WHERE id = auth.uid()
-      AND role IN ('tenant_admin', 'staff')
-    )
-  );
-
 -- ============================================================
 -- 6. AUDIT LOGS TABLE
 -- Security event logging (ISO 27001 A.12.4 - Logging & Monitoring)
@@ -299,10 +176,125 @@ CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at DESC);
 CREATE INDEX idx_audit_logs_severity ON audit_logs(severity);
 CREATE INDEX idx_audit_logs_status ON audit_logs(status);
 
--- Enable RLS
+-- ============================================================
+-- 7. ENABLE ROW LEVEL SECURITY ON ALL TABLES
+-- ============================================================
+
+ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE api_connectors ENABLE ROW LEVEL SECURITY;
+ALTER TABLE api_connector_secrets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE api_routes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies for audit_logs
+-- ============================================================
+-- 8. CREATE RLS POLICIES (After all tables exist)
+-- ============================================================
+
+-- Tenants RLS Policies
+CREATE POLICY "platform_admins_all_tenants"
+  ON tenants
+  FOR ALL
+  USING (
+    auth.uid() IN (
+      SELECT id FROM profiles
+      WHERE role = 'platform_admin'
+    )
+  );
+
+CREATE POLICY "tenant_admins_own_tenant"
+  ON tenants
+  FOR SELECT
+  USING (
+    id IN (
+      SELECT tenant_id FROM profiles
+      WHERE id = auth.uid()
+      AND role IN ('tenant_admin', 'staff')
+    )
+  );
+
+-- Profiles RLS Policies
+CREATE POLICY "users_read_own_profile"
+  ON profiles
+  FOR SELECT
+  USING (auth.uid() = id);
+
+CREATE POLICY "platform_admins_all_profiles"
+  ON profiles
+  FOR ALL
+  USING (
+    auth.uid() IN (
+      SELECT id FROM profiles
+      WHERE role = 'platform_admin'
+    )
+  );
+
+CREATE POLICY "tenant_admins_own_tenant_profiles"
+  ON profiles
+  FOR ALL
+  USING (
+    tenant_id IN (
+      SELECT tenant_id FROM profiles
+      WHERE id = auth.uid()
+      AND role = 'tenant_admin'
+    )
+  );
+
+-- API Connectors RLS Policies
+CREATE POLICY "platform_admins_all_connectors"
+  ON api_connectors
+  FOR ALL
+  USING (
+    auth.uid() IN (
+      SELECT id FROM profiles
+      WHERE role = 'platform_admin'
+    )
+  );
+
+CREATE POLICY "tenant_admins_own_tenant_connectors"
+  ON api_connectors
+  FOR ALL
+  USING (
+    tenant_id IN (
+      SELECT tenant_id FROM profiles
+      WHERE id = auth.uid()
+      AND role IN ('tenant_admin', 'staff')
+    )
+  );
+
+-- API Connector Secrets RLS Policies
+CREATE POLICY "service_role_only_secrets"
+  ON api_connector_secrets
+  FOR ALL
+  USING (
+    -- This policy effectively denies all user access
+    -- Only service_role (used by gateway server) can access
+    FALSE
+  );
+
+-- API Routes RLS Policies
+CREATE POLICY "platform_admins_all_routes"
+  ON api_routes
+  FOR ALL
+  USING (
+    auth.uid() IN (
+      SELECT id FROM profiles
+      WHERE role = 'platform_admin'
+    )
+  );
+
+CREATE POLICY "tenant_admins_own_tenant_routes"
+  ON api_routes
+  FOR ALL
+  USING (
+    tenant_id IN (
+      SELECT tenant_id FROM profiles
+      WHERE id = auth.uid()
+      AND role IN ('tenant_admin', 'staff')
+    )
+  );
+
+-- Audit Logs RLS Policies
 CREATE POLICY "platform_admins_all_audit_logs"
   ON audit_logs
   FOR SELECT
@@ -328,7 +320,7 @@ CREATE POLICY "tenant_admins_own_tenant_audit_logs"
 -- This is enforced at application level with service role key
 
 -- ============================================================
--- 7. FUNCTIONS
+-- 9. FUNCTIONS
 -- ============================================================
 
 -- Function: Update updated_at timestamp
@@ -445,7 +437,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================================
--- 8. SEED DATA (Development/Testing)
+-- 10. SEED DATA (Development/Testing)
 -- ============================================================
 
 -- Create default tenant (must exist before profile creation)
@@ -455,7 +447,7 @@ VALUES
 ON CONFLICT (slug) DO NOTHING;
 
 -- ============================================================
--- 9. TRIGGERS FOR AUTO-PROFILE CREATION
+-- 11. TRIGGERS FOR AUTO-PROFILE CREATION
 -- ============================================================
 
 -- Note: Profiles are created via Supabase Auth triggers
@@ -484,7 +476,7 @@ CREATE TRIGGER on_auth_user_created
   EXECUTE FUNCTION handle_new_user();
 
 -- ============================================================
--- 10. VIEWS (Helper views for common queries)
+-- 12. VIEWS (Helper views for common queries)
 -- ============================================================
 
 -- View: Active routes with connector details
@@ -533,7 +525,7 @@ WHERE c.is_active = true
 GROUP BY c.id;
 
 -- ============================================================
--- 11. SECURITY HARDENING
+-- 13. SECURITY HARDENING
 -- ============================================================
 
 -- Revoke public access to all tables by default
@@ -550,7 +542,7 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated;
 -- This is default in Supabase
 
 -- ============================================================
--- 12. INDEXES FOR PERFORMANCE
+-- 14. INDEXES FOR PERFORMANCE
 -- ============================================================
 
 -- Additional composite indexes for common query patterns
