@@ -1,0 +1,277 @@
+```
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                  KUMII API GATEWAY - VERCEL ARCHITECTURE                  ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+                              🌐 INTERNET
+                                   │
+                                   │ HTTPS
+                                   ▼
+        ╔══════════════════════════════════════════════════════╗
+        ║         VERCEL EDGE NETWORK (Global CDN)             ║
+        ║  • Automatic HTTPS/SSL                               ║
+        ║  • DDoS Protection                                   ║
+        ║  • Global Load Balancing                             ║
+        ╚══════════════════════════════════════════════════════╝
+                                   │
+                    ┌──────────────┴──────────────┐
+                    │                             │
+                    ▼                             ▼
+        ┌────────────────────┐        ┌────────────────────┐
+        │   /api/* Routes    │        │    /* Routes       │
+        │                    │        │                    │
+        │  Gateway Server    │        │  Admin Client      │
+        │  (Serverless Fn)   │        │  (Static Files)    │
+        │                    │        │                    │
+        │  Node.js 18.x      │        │  React + Vite      │
+        │  Express App       │        │  SPA               │
+        │  1024MB RAM        │        │  Edge Cached       │
+        │  10s timeout       │        │  <50ms latency     │
+        └────────┬───────────┘        └────────────────────┘
+                 │
+                 │ Supabase Client
+                 │
+                 ▼
+    ┌────────────────────────────────┐
+    │      Security Middleware       │
+    │  • JWT Authentication          │
+    │  • RBAC Authorization          │
+    │  • Rate Limiting               │
+    │  • SSRF Protection             │
+    │  • Input Validation (Zod)      │
+    └────────────┬───────────────────┘
+                 │
+        ┌────────┴────────┐
+        │                 │
+        ▼                 ▼
+┌─────────────┐   ┌─────────────┐
+│ Upstash     │   │  Supabase   │
+│ Redis       │   │             │
+│             │   │ PostgreSQL  │
+│ • Rate      │   │ + RLS       │
+│   Limits    │   │             │
+│ • Cache     │   │ Auth        │
+│ • Session   │   │ Storage     │
+└─────────────┘   └─────────────┘
+
+
+═════════════════════════════════════════════════════════════════════════════
+                           REQUEST FLOW EXAMPLES
+═════════════════════════════════════════════════════════════════════════════
+
+1️⃣  ADMIN UI ACCESS
+   ─────────────────
+   User → https://your-domain.vercel.app/
+        ↓
+   Vercel Edge → Serve index.html (React App)
+        ↓
+   Browser loads React → Authenticates with Supabase
+        ↓
+   User sees Dashboard
+
+
+2️⃣  API ROUTE MANAGEMENT (Admin)
+   ──────────────────────────────
+   Admin → POST https://your-domain.vercel.app/api/admin/connectors
+        ↓
+   Vercel → /api/* → Serverless Function
+        ↓
+   Auth Middleware → Verify JWT → Check RBAC (admin role)
+        ↓
+   Rate Limiter → Check Redis
+        ↓
+   Zod Validation → Validate request body
+        ↓
+   SSRF Protection → Validate connector URL
+        ↓
+   Crypto Service → Encrypt API secret (AES-256-GCM)
+        ↓
+   Supabase → INSERT into api_connectors (with RLS)
+        ↓
+   Audit Logger → Log action with correlation ID
+        ↓
+   Response → 201 Created
+
+
+3️⃣  DYNAMIC PROXY REQUEST
+   ────────────────────────
+   Client → GET https://your-domain.vercel.app/api/v1/crypto/bitcoin
+        ↓
+   Vercel → Serverless Function
+        ↓
+   Auth Middleware → Verify JWT (optional)
+        ↓
+   Rate Limiter → Check Redis (per-user limit)
+        ↓
+   Route Matcher → Query Supabase for route config
+        ↓
+   Supabase → SELECT from v_active_routes (with RLS)
+        ↓
+   Circuit Breaker → Check connector health
+        ↓
+   SSRF Protection → Validate upstream URL
+        ↓
+   Crypto Service → Decrypt connector secret
+        ↓
+   Axios → Forward request to upstream API
+        ↓
+   Transform Service → Apply response transformation
+        ↓
+   Cache → Store in Redis (if configured)
+        ↓
+   Audit Logger → Log proxy request
+        ↓
+   Response → Return to client
+
+
+═════════════════════════════════════════════════════════════════════════════
+                        DEPLOYMENT ENVIRONMENTS
+═════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│  PRODUCTION                                                             │
+│  ─────────────────────────────────────────────────────────────────────  │
+│  Branch: main                                                           │
+│  URL: https://your-domain.vercel.app                                   │
+│  Trigger: Push to main branch                                          │
+│  Env: Production environment variables                                 │
+│  Features: Full security, monitoring, audit logging                    │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│  PREVIEW                                                                │
+│  ─────────────────────────────────────────────────────────────────────  │
+│  Branch: Any feature branch                                            │
+│  URL: https://kumii-api-gateway-git-feature-xxx.vercel.app            │
+│  Trigger: Push to any branch or Pull Request                          │
+│  Env: Preview environment variables                                    │
+│  Features: Test changes before production                              │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│  DEVELOPMENT                                                            │
+│  ─────────────────────────────────────────────────────────────────────  │
+│  Location: Local machine                                               │
+│  URL: http://localhost:3000 (gateway)                                  │
+│       http://localhost:5173 (admin)                                    │
+│  Trigger: npm run dev                                                  │
+│  Env: Local .env files                                                 │
+│  Features: Hot reload, debugging, fast iteration                       │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+═════════════════════════════════════════════════════════════════════════════
+                          SECURITY LAYERS
+═════════════════════════════════════════════════════════════════════════════
+
+   Layer 1: Network
+   ────────────────
+   • Vercel Edge (DDoS protection)
+   • TLS 1.2+ (automatic HTTPS)
+   • CORS (configured origins)
+   • Security headers (Helmet)
+
+   Layer 2: Application
+   ────────────────────
+   • Rate limiting (Redis-backed)
+   • Request size limits (10MB)
+   • SSRF protection (private IP blocking)
+   • Input validation (Zod schemas)
+
+   Layer 3: Authentication
+   ───────────────────────
+   • JWT tokens (Supabase Auth)
+   • RBAC (4 roles: platform_admin, tenant_admin, staff, user)
+   • Session management
+   • Token refresh
+
+   Layer 4: Authorization
+   ──────────────────────
+   • Tenant isolation (RLS)
+   • Role-based access
+   • Resource ownership checks
+   • Least privilege
+
+   Layer 5: Data
+   ─────────────
+   • Encryption at rest (AES-256-GCM)
+   • Encryption in transit (TLS)
+   • Secret segregation
+   • Audit trail (all actions logged)
+
+
+═════════════════════════════════════════════════════════════════════════════
+                        MONITORING & OBSERVABILITY
+═════════════════════════════════════════════════════════════════════════════
+
+   📊 Vercel Dashboard
+   ───────────────────
+   • Function execution logs
+   • Performance metrics
+   • Error tracking
+   • Bandwidth usage
+   • Deployment history
+
+   📊 Supabase Dashboard
+   ─────────────────────
+   • Database queries
+   • RLS policy violations
+   • API usage
+   • Auth events
+   • Storage metrics
+
+   📊 Upstash Console
+   ──────────────────
+   • Redis operations
+   • Rate limit hits
+   • Cache performance
+   • Memory usage
+
+   📊 Audit Logs (Database)
+   ────────────────────────
+   • All admin actions
+   • Security events
+   • API access
+   • Authentication attempts
+   • Configuration changes
+
+
+═════════════════════════════════════════════════════════════════════════════
+                           SCALING STRATEGY
+═════════════════════════════════════════════════════════════════════════════
+
+   Automatic Scaling ✅
+   ────────────────────
+   • Serverless functions scale to demand
+   • No manual configuration needed
+   • Pay only for actual usage
+   • Handles traffic spikes automatically
+
+   Performance Optimization
+   ────────────────────────
+   • Edge caching for static assets
+   • Redis caching for API responses
+   • Database query optimization
+   • Code splitting (Vite)
+   • Bundle size optimization
+
+   Cold Start Mitigation
+   ─────────────────────
+   • Keep-warm cron jobs
+   • Lazy loading optimization
+   • Vercel Pro (lower cold starts)
+   • Bundle size reduction
+
+   Database Scaling
+   ────────────────
+   • Supabase auto-scaling
+   • Connection pooling (PgBouncer)
+   • Read replicas (Supabase Pro)
+   • Indexes on frequently queried columns
+
+
+═════════════════════════════════════════════════════════════════════════════
+
+Generated: 2026-02-08
+Documentation: docs/VERCEL_DEPLOYMENT.md
+```

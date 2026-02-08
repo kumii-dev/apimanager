@@ -1,0 +1,4 @@
+# Keep functions warm (prevents cold starts)
+# Runs every 5 minutes
+*/5 * * * * curl https://your-domain.vercel.app/health > /dev/null 2>&1
+*/5 * * * * curl https://your-domain.vercel.app/readiness > /dev/null 2>&1

@@ -1,0 +1,70 @@
+# Dependencies
+node_modules/
+**/node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Environment files
+.env
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+
+# Build outputs
+dist/
+build/
+**/dist/
+**/build/
+.next/
+out/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+.AppleDouble
+.LSOverride
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+
+# Testing
+coverage/
+.nyc_output/
+*.lcov
+
+# Vercel
+.vercel/
+
+# TypeScript
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Debug
+.pnp.*
+.yarn/
+
+# Misc
+.turbo
+.contentlayer

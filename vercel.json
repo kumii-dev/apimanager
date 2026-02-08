@@ -1,0 +1,30 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "name": "kumii-api-gateway",
+  "buildCommand": "cd gateway-server && npm install && npm run build && cd ../admin-client && npm install && npm run build",
+  "outputDirectory": "admin-client/dist",
+  "installCommand": "npm install --prefix gateway-server && npm install --prefix admin-client",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api"
+    },
+    {
+      "source": "/health",
+      "destination": "/api"
+    },
+    {
+      "source": "/readiness",
+      "destination": "/api"
+    }
+  ],
+  "functions": {
+    "api/*.ts": {
+      "memory": 1024,
+      "maxDuration": 10,
+      "runtime": "nodejs18.x"
+    }
+  },
+  "regions": ["iad1"]
+}
