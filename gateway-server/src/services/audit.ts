@@ -183,7 +183,7 @@ export class AuditLogger {
    * 
    * @param entry - Audit log entry
    */
-  private async persistToDatabase(entry: AuditLogEntry): Promise<void> {
+  private async persistToDatabase(_entry: AuditLogEntry): Promise<void> {
     // This will be implemented with Supabase client
     // For now, just log that it would be persisted
     // Implementation in supabase service

@@ -4,7 +4,7 @@
  * OWASP - DoS Protection
  */
 
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import RedisStore from 'rate-limit-redis';
 import { createClient } from 'redis';
@@ -85,7 +85,7 @@ export const rateLimitMiddleware = (options: RateLimitOptions = {}) => {
         action: AuditActions.RATE_LIMIT_EXCEEDED,
         userId: req.user?.id,
         tenantId: req.user?.tenantId,
-        requestId: req.id,
+        requestId: String(req.id),
         ipAddress: req.ip,
         userAgent: req.headers['user-agent'],
         details: {

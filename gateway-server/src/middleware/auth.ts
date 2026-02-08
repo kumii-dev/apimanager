@@ -94,7 +94,7 @@ export const authMiddleware = (options: AuthMiddlewareOptions = {}) => {
 
         auditLogger.logAuth({
           action: AuditActions.AUTH_FAILURE,
-          requestId: req.id,
+          requestId: String(req.id),
           ipAddress: req.ip,
           userAgent: req.headers['user-agent'],
           success: false,
@@ -121,7 +121,7 @@ export const authMiddleware = (options: AuthMiddlewareOptions = {}) => {
 
         auditLogger.logAuth({
           action: AuditActions.AUTH_FAILURE,
-          requestId: req.id,
+          requestId: String(req.id),
           ipAddress: req.ip,
           userAgent: req.headers['user-agent'],
           success: false,
@@ -151,7 +151,7 @@ export const authMiddleware = (options: AuthMiddlewareOptions = {}) => {
         auditLogger.logAuth({
           action: AuditActions.AUTH_FAILURE,
           userId: user.id,
-          requestId: req.id,
+          requestId: String(req.id),
           ipAddress: req.ip,
           userAgent: req.headers['user-agent'],
           success: false,
@@ -171,7 +171,7 @@ export const authMiddleware = (options: AuthMiddlewareOptions = {}) => {
           action: AuditActions.AUTHZ_FAILURE,
           userId: profile.id,
           tenantId: profile.tenant_id,
-          requestId: req.id,
+          requestId: String(req.id),
           ipAddress: req.ip,
           userAgent: req.headers['user-agent'],
           details: {
@@ -202,7 +202,7 @@ export const authMiddleware = (options: AuthMiddlewareOptions = {}) => {
         action: AuditActions.AUTH_LOGIN,
         userId: profile.id,
         tenantId: profile.tenant_id,
-        requestId: req.id,
+        requestId: String(req.id),
         ipAddress: req.ip,
         userAgent: req.headers['user-agent'],
         success: true,
