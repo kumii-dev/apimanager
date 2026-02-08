@@ -19,11 +19,5 @@
       "destination": "/api"
     }
   ],
-  "functions": {
-    "gateway-server/api/index.ts": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
   "regions": ["iad1"]
 }
