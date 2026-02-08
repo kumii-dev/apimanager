@@ -41,7 +41,16 @@ function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Check if environment variables are set
+  const hasEnvVars = import.meta.env.VITE_SUPABASE_URL && 
+                     import.meta.env.VITE_SUPABASE_ANON_KEY;
+
   useEffect(() => {
+    if (!hasEnvVars) {
+      setLoading(false);
+      return;
+    }
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -56,7 +65,39 @@ function App() {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [hasEnvVars]);
+
+  // Show setup message if env vars are missing
+  if (!hasEnvVars) {
+    return (
+      <Container className="mt-5">
+        <div className="alert alert-warning" role="alert">
+          <h4 className="alert-heading">⚙️ Configuration Required</h4>
+          <p>Welcome to KUMII API Gateway Admin Console!</p>
+          <hr />
+          <p className="mb-0">
+            <strong>Next Steps:</strong><br />
+            1. Go to your Vercel dashboard<br />
+            2. Navigate to Project Settings → Environment Variables<br />
+            3. Add the following variables:<br />
+            <code>VITE_SUPABASE_URL</code><br />
+            <code>VITE_SUPABASE_ANON_KEY</code><br />
+            <code>VITE_API_BASE_URL</code><br />
+            4. Redeploy the application
+          </p>
+        </div>
+        <div className="card">
+          <div className="card-body">
+            <h5 className="card-title">✅ Deployment Successful</h5>
+            <p className="card-text">
+              The application has been deployed successfully. Once you add the environment 
+              variables and redeploy, you'll have full access to the admin console.
+            </p>
+          </div>
+        </div>
+      </Container>
+    );
+  }
 
   if (loading) {
     return (

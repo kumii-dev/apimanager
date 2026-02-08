@@ -17,6 +17,10 @@
     {
       "source": "/readiness",
       "destination": "/api"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "regions": ["iad1"]
