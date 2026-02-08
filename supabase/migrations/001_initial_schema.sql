@@ -34,10 +34,9 @@ CREATE POLICY "platform_admins_all_tenants"
   ON tenants
   FOR ALL
   USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'platform_admin'
+    auth.uid() IN (
+      SELECT id FROM profiles
+      WHERE role = 'platform_admin'
     )
   );
 
@@ -45,11 +44,10 @@ CREATE POLICY "tenant_admins_own_tenant"
   ON tenants
   FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.tenant_id = tenants.id
-      AND profiles.role IN ('tenant_admin', 'staff')
+    id IN (
+      SELECT tenant_id FROM profiles
+      WHERE id = auth.uid()
+      AND role IN ('tenant_admin', 'staff')
     )
   );
 
@@ -87,10 +85,9 @@ CREATE POLICY "platform_admins_all_profiles"
   ON profiles
   FOR ALL
   USING (
-    EXISTS (
-      SELECT 1 FROM profiles p
-      WHERE p.id = auth.uid()
-      AND p.role = 'platform_admin'
+    auth.uid() IN (
+      SELECT id FROM profiles
+      WHERE role = 'platform_admin'
     )
   );
 
@@ -98,11 +95,10 @@ CREATE POLICY "tenant_admins_own_tenant_profiles"
   ON profiles
   FOR ALL
   USING (
-    EXISTS (
-      SELECT 1 FROM profiles p
-      WHERE p.id = auth.uid()
-      AND p.tenant_id = profiles.tenant_id
-      AND p.role = 'tenant_admin'
+    tenant_id IN (
+      SELECT tenant_id FROM profiles
+      WHERE id = auth.uid()
+      AND role = 'tenant_admin'
     )
   );
 
@@ -144,10 +140,9 @@ CREATE POLICY "platform_admins_all_connectors"
   ON api_connectors
   FOR ALL
   USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'platform_admin'
+    auth.uid() IN (
+      SELECT id FROM profiles
+      WHERE role = 'platform_admin'
     )
   );
 
@@ -155,11 +150,10 @@ CREATE POLICY "tenant_admins_own_tenant_connectors"
   ON api_connectors
   FOR ALL
   USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.tenant_id = api_connectors.tenant_id
-      AND profiles.role IN ('tenant_admin', 'staff')
+    tenant_id IN (
+      SELECT tenant_id FROM profiles
+      WHERE id = auth.uid()
+      AND role IN ('tenant_admin', 'staff')
     )
   );
 
@@ -258,10 +252,9 @@ CREATE POLICY "platform_admins_all_routes"
   ON api_routes
   FOR ALL
   USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'platform_admin'
+    auth.uid() IN (
+      SELECT id FROM profiles
+      WHERE role = 'platform_admin'
     )
   );
 
@@ -269,11 +262,10 @@ CREATE POLICY "tenant_admins_own_tenant_routes"
   ON api_routes
   FOR ALL
   USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.tenant_id = api_routes.tenant_id
-      AND profiles.role IN ('tenant_admin', 'staff')
+    tenant_id IN (
+      SELECT tenant_id FROM profiles
+      WHERE id = auth.uid()
+      AND role IN ('tenant_admin', 'staff')
     )
   );
 
@@ -315,10 +307,9 @@ CREATE POLICY "platform_admins_all_audit_logs"
   ON audit_logs
   FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'platform_admin'
+    auth.uid() IN (
+      SELECT id FROM profiles
+      WHERE role = 'platform_admin'
     )
   );
 
@@ -326,11 +317,10 @@ CREATE POLICY "tenant_admins_own_tenant_audit_logs"
   ON audit_logs
   FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.tenant_id = audit_logs.tenant_id
-      AND profiles.role IN ('tenant_admin', 'staff')
+    tenant_id IN (
+      SELECT tenant_id FROM profiles
+      WHERE id = auth.uid()
+      AND role IN ('tenant_admin', 'staff')
     )
   );
 
@@ -458,14 +448,18 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- 8. SEED DATA (Development/Testing)
 -- ============================================================
 
--- Create default tenant
+-- Create default tenant (must exist before profile creation)
 INSERT INTO tenants (id, name, slug, status)
 VALUES 
   ('00000000-0000-0000-0000-000000000001', 'KUMII Platform', 'kumii', 'active')
 ON CONFLICT (slug) DO NOTHING;
 
+-- ============================================================
+-- 9. TRIGGERS FOR AUTO-PROFILE CREATION
+-- ============================================================
+
 -- Note: Profiles are created via Supabase Auth triggers
--- Example profile creation trigger:
+-- This trigger creates a profile when a new user signs up
 
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
@@ -476,19 +470,21 @@ BEGIN
     NEW.email,
     'user', -- Default role
     '00000000-0000-0000-0000-000000000001' -- Default tenant
-  );
+  )
+  ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Trigger on auth.users
+-- Trigger on auth.users (only if auth schema exists)
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW
   EXECUTE FUNCTION handle_new_user();
 
 -- ============================================================
--- 9. VIEWS (Helper views for common queries)
+-- 10. VIEWS (Helper views for common queries)
 -- ============================================================
 
 -- View: Active routes with connector details
@@ -537,7 +533,7 @@ WHERE c.is_active = true
 GROUP BY c.id;
 
 -- ============================================================
--- 10. SECURITY HARDENING
+-- 11. SECURITY HARDENING
 -- ============================================================
 
 -- Revoke public access to all tables by default
@@ -554,7 +550,7 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated;
 -- This is default in Supabase
 
 -- ============================================================
--- 11. INDEXES FOR PERFORMANCE
+-- 12. INDEXES FOR PERFORMANCE
 -- ============================================================
 
 -- Additional composite indexes for common query patterns
