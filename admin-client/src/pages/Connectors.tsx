@@ -33,6 +33,14 @@ interface ConnectorFormData {
   auth_type: 'none' | 'api_key' | 'bearer' | 'basic' | 'oauth2' | 'custom';
   timeout_ms: number;
   is_active: boolean;
+  // Auth credentials
+  api_key?: string;
+  api_key_header?: string;
+  bearer_token?: string;
+  basic_username?: string;
+  basic_password?: string;
+  oauth_client_id?: string;
+  oauth_client_secret?: string;
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
@@ -50,6 +58,7 @@ export default function Connectors() {
     auth_type: 'none',
     timeout_ms: 30000,
     is_active: true,
+    api_key_header: 'X-API-Key',
   });
 
   useEffect(() => {
@@ -105,6 +114,7 @@ export default function Connectors() {
       auth_type: 'none',
       timeout_ms: 30000,
       is_active: true,
+      api_key_header: 'X-API-Key',
     });
   };
 
@@ -347,6 +357,117 @@ export default function Connectors() {
                 The base URL for all API requests to this connector
               </Form.Text>
             </Form.Group>
+
+            {/* Conditional Authentication Fields */}
+            {formData.auth_type === 'api_key' && (
+              <>
+                <Form.Group className="mb-3">
+                  <Form.Label>API Key *</Form.Label>
+                  <Form.Control
+                    type="password"
+                    placeholder="Enter your API key"
+                    value={formData.api_key || ''}
+                    onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
+                    required
+                  />
+                  <Form.Text className="text-muted">
+                    Your API key will be encrypted and stored securely
+                  </Form.Text>
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>API Key Header Name</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="X-API-Key"
+                    value={formData.api_key_header || 'X-API-Key'}
+                    onChange={(e) => setFormData({ ...formData, api_key_header: e.target.value })}
+                  />
+                  <Form.Text className="text-muted">
+                    The header name where the API key should be sent (default: X-API-Key)
+                  </Form.Text>
+                </Form.Group>
+              </>
+            )}
+
+            {formData.auth_type === 'bearer' && (
+              <Form.Group className="mb-3">
+                <Form.Label>Bearer Token *</Form.Label>
+                <Form.Control
+                  type="password"
+                  placeholder="Enter your bearer token"
+                  value={formData.bearer_token || ''}
+                  onChange={(e) => setFormData({ ...formData, bearer_token: e.target.value })}
+                  required
+                />
+                <Form.Text className="text-muted">
+                  Token will be sent as "Authorization: Bearer [token]"
+                </Form.Text>
+              </Form.Group>
+            )}
+
+            {formData.auth_type === 'basic' && (
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Username *</Form.Label>
+                    <Form.Control
+                      type="text"
+                      placeholder="Enter username"
+                      value={formData.basic_username || ''}
+                      onChange={(e) => setFormData({ ...formData, basic_username: e.target.value })}
+                      required
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Password *</Form.Label>
+                    <Form.Control
+                      type="password"
+                      placeholder="Enter password"
+                      value={formData.basic_password || ''}
+                      onChange={(e) => setFormData({ ...formData, basic_password: e.target.value })}
+                      required
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+            )}
+
+            {formData.auth_type === 'oauth2' && (
+              <>
+                <Form.Group className="mb-3">
+                  <Form.Label>OAuth Client ID *</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="Enter OAuth client ID"
+                    value={formData.oauth_client_id || ''}
+                    onChange={(e) => setFormData({ ...formData, oauth_client_id: e.target.value })}
+                    required
+                  />
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>OAuth Client Secret *</Form.Label>
+                  <Form.Control
+                    type="password"
+                    placeholder="Enter OAuth client secret"
+                    value={formData.oauth_client_secret || ''}
+                    onChange={(e) => setFormData({ ...formData, oauth_client_secret: e.target.value })}
+                    required
+                  />
+                  <Form.Text className="text-muted">
+                    OAuth 2.0 credentials will be encrypted and stored securely
+                  </Form.Text>
+                </Form.Group>
+              </>
+            )}
+
+            {formData.auth_type === 'custom' && (
+              <Alert variant="info">
+                <i className="bi bi-info-circle me-2"></i>
+                Custom authentication will require manual header configuration after creation.
+              </Alert>
+            )}
 
             <Row>
               <Col md={6}>
