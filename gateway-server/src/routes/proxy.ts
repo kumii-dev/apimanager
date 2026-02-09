@@ -5,8 +5,18 @@
 
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth';
+import { config } from '../config';
 
 export const proxyRoutes = Router();
+
+// Health check endpoint (before catch-all)
+proxyRoutes.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    environment: config.env,
+  });
+});
 
 // Optional authentication (determined by route config)
 proxyRoutes.use(authMiddleware({ requireAuth: false }));
