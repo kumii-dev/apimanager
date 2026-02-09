@@ -82,8 +82,11 @@ export const authMiddleware = (options: AuthMiddlewareOptions = {}) => {
 
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
+      console.log('[Auth] Starting authentication check');
+      
       // Development bypass (DANGEROUS - only for local testing)
       if (config.dev.bypassAuth) {
+        console.log('[Auth] Bypassing auth in dev mode');
         req.user = {
           id: 'dev-user',
           email: 'dev@localhost',
@@ -96,6 +99,7 @@ export const authMiddleware = (options: AuthMiddlewareOptions = {}) => {
       // Extract token
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        console.log('[Auth] Missing or invalid authorization header');
         if (!requireAuth) {
           return next();
         }
@@ -119,6 +123,7 @@ export const authMiddleware = (options: AuthMiddlewareOptions = {}) => {
       const token = authHeader.substring(7);
 
       // Verify token with Supabase (with timeout)
+      console.log('[Auth] Verifying token with Supabase');
       const supabase = getSupabaseClient();
       
       let user;
@@ -131,10 +136,11 @@ export const authMiddleware = (options: AuthMiddlewareOptions = {}) => {
             setTimeout(() => reject(new Error('Auth timeout')), 8000)
           )
         ]);
+        console.log('[Auth] Token verification complete');
         user = response.data.user;
         error = response.error;
       } catch (err) {
-        console.error('Auth verification error:', err);
+        console.error('[Auth] Token verification error:', err);
         res.status(500).json({
           error: 'Internal Server Error',
           message: 'Authentication service timeout',
@@ -164,6 +170,7 @@ export const authMiddleware = (options: AuthMiddlewareOptions = {}) => {
       }
 
       // Get user profile with role and tenant (with timeout)
+      console.log('[Auth] Fetching user profile');
       const serviceSupabase = createClient(
         config.supabase.url,
         config.supabase.serviceRoleKey,
@@ -193,10 +200,11 @@ export const authMiddleware = (options: AuthMiddlewareOptions = {}) => {
             setTimeout(() => reject(new Error('Profile query timeout')), 8000)
           )
         ]);
+        console.log('[Auth] Profile fetch complete');
         profile = response.data;
         profileError = response.error;
       } catch (err) {
-        console.error('Profile query error:', err);
+        console.error('[Auth] Profile query error:', err);
         res.status(500).json({
           error: 'Internal Server Error',
           message: 'Database query timeout',
