@@ -48,6 +48,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000
 export default function Connectors() {
   const [connectors, setConnectors] = useState<Connector[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingConnector, setEditingConnector] = useState<Connector | null>(null);
@@ -120,17 +121,50 @@ export default function Connectors() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     try {
+      setSaving(true);
+      setError(null);
+      
+      console.log('Submitting connector data:', formData);
+      
+      // Prepare the payload
+      const payload = {
+        name: formData.name,
+        type: formData.type,
+        base_url: formData.base_url,
+        auth_type: formData.auth_type,
+        timeout_ms: formData.timeout_ms,
+        is_active: formData.is_active,
+        // Add auth credentials if present
+        ...(formData.api_key && { api_key: formData.api_key }),
+        ...(formData.api_key_header && { api_key_header: formData.api_key_header }),
+        ...(formData.bearer_token && { bearer_token: formData.bearer_token }),
+        ...(formData.basic_username && { basic_username: formData.basic_username }),
+        ...(formData.basic_password && { basic_password: formData.basic_password }),
+        ...(formData.oauth_client_id && { oauth_client_id: formData.oauth_client_id }),
+        ...(formData.oauth_client_secret && { oauth_client_secret: formData.oauth_client_secret }),
+      };
+      
+      console.log('Sending payload:', payload);
+      
       if (editingConnector) {
-        await axios.put(`${API_BASE_URL}/admin/connectors/${editingConnector.id}`, formData);
+        const response = await axios.put(`${API_BASE_URL}/admin/connectors/${editingConnector.id}`, payload);
+        console.log('Update response:', response.data);
       } else {
-        await axios.post(`${API_BASE_URL}/admin/connectors`, formData);
+        const response = await axios.post(`${API_BASE_URL}/admin/connectors`, payload);
+        console.log('Create response:', response.data);
       }
+      
       handleCloseModal();
-      fetchConnectors();
+      await fetchConnectors();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to save connector');
       console.error('Error saving connector:', err);
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to save connector';
+      setError(errorMessage);
+      alert(`Error: ${errorMessage}`); // Show alert for debugging
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -285,6 +319,12 @@ export default function Connectors() {
         </Modal.Header>
         <Form onSubmit={handleSubmit}>
           <Modal.Body>
+            {error && (
+              <Alert variant="danger" dismissible onClose={() => setError(null)} className="mb-3">
+                {error}
+              </Alert>
+            )}
+            
             <Form.Group className="mb-3">
               <Form.Label>Name *</Form.Label>
               <Form.Control
@@ -505,12 +545,21 @@ export default function Connectors() {
             </Row>
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" onClick={handleCloseModal}>
+            <Button variant="secondary" onClick={handleCloseModal} disabled={saving}>
               Cancel
             </Button>
-            <Button variant="primary" type="submit">
-              <i className="bi bi-check-circle me-1"></i>
-              {editingConnector ? 'Update Connector' : 'Create Connector'}
+            <Button variant="primary" type="submit" disabled={saving}>
+              {saving ? (
+                <>
+                  <Spinner animation="border" size="sm" className="me-2" />
+                  {editingConnector ? 'Updating...' : 'Creating...'}
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-check-circle me-1"></i>
+                  {editingConnector ? 'Update Connector' : 'Create Connector'}
+                </>
+              )}
             </Button>
           </Modal.Footer>
         </Form>
