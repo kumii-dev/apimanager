@@ -6,7 +6,7 @@
   "outputDirectory": "admin-client/dist",
   "installCommand": "npm install --prefix gateway-server && npm install --prefix admin-client",
   "functions": {
-    "api/index.js": {
+    "api/*.ts": {
       "maxDuration": 30,
       "memory": 1024
     }
