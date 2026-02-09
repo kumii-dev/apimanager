@@ -43,32 +43,28 @@ interface AuthMiddlewareOptions {
 }
 
 /**
- * Supabase client (singleton)
+ * Supabase client factory (create new client per request for serverless)
  */
-let supabaseClient: SupabaseClient | null = null;
-
 const getSupabaseClient = (): SupabaseClient => {
-  if (!supabaseClient) {
-    supabaseClient = createClient(
-      config.supabase.url,
-      config.supabase.anonKey,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
+  // In serverless, always create a fresh client to avoid connection pooling issues
+  return createClient(
+    config.supabase.url,
+    config.supabase.anonKey,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+      global: {
+        fetch: (url, options = {}) => {
+          return fetch(url, {
+            ...options,
+            signal: AbortSignal.timeout(10000), // 10 second timeout
+          });
         },
-        global: {
-          fetch: (url, options = {}) => {
-            return fetch(url, {
-              ...options,
-              signal: AbortSignal.timeout(10000), // 10 second timeout
-            });
-          },
-        },
-      }
-    );
-  }
-  return supabaseClient;
+      },
+    }
+  );
 };
 
 /**
