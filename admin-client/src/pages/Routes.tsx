@@ -64,7 +64,9 @@ interface RouteFormData {
   cache_ttl_seconds: number;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+// Use relative URL in production (Vercel), localhost in development
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+  (window.location.hostname === 'localhost' ? 'http://localhost:3000' : '');
 
 const MODULE_PREFIXES = [
   '/api/v1/market',

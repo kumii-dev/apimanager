@@ -41,7 +41,9 @@ interface AuditLogFilters {
   pageSize: number;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+// Use relative URL in production (Vercel), localhost in development
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+  (window.location.hostname === 'localhost' ? 'http://localhost:3000' : '');
 
 const SEVERITY_LEVELS = ['debug', 'info', 'warn', 'error', 'critical'];
 const STATUS_VALUES = ['success', 'failure', 'pending'];
