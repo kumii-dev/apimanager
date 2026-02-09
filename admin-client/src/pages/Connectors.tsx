@@ -169,17 +169,25 @@ export default function Connectors() {
       };
       
       console.log('Sending payload:', payload);
+      console.log('API_BASE_URL:', API_BASE_URL);
+      console.log('Full URL:', `${API_BASE_URL}/admin/connectors`);
+      console.log('Has auth token:', !!session.access_token);
       
       const axiosConfig = {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
         },
       };
       
+      console.log('Axios config:', axiosConfig);
+      
       if (editingConnector) {
+        console.log('Updating connector:', editingConnector.id);
         const response = await axios.put(`${API_BASE_URL}/admin/connectors/${editingConnector.id}`, payload, axiosConfig);
         console.log('Update response:', response.data);
       } else {
+        console.log('Creating new connector...');
         const response = await axios.post(`${API_BASE_URL}/admin/connectors`, payload, axiosConfig);
         console.log('Create response:', response.data);
       }
@@ -187,10 +195,26 @@ export default function Connectors() {
       handleCloseModal();
       await fetchConnectors();
     } catch (err: any) {
-      console.error('Error saving connector:', err);
-      const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to save connector';
+      console.error('Full error object:', err);
+      console.error('Error response:', err.response);
+      console.error('Error request:', err.request);
+      console.error('Error message:', err.message);
+      console.error('Error config:', err.config);
+      
+      let errorMessage = 'Failed to save connector';
+      if (err.response) {
+        // Server responded with error
+        errorMessage = err.response.data?.message || err.response.data?.error || `Server error: ${err.response.status}`;
+      } else if (err.request) {
+        // Request made but no response
+        errorMessage = 'No response from server - check network connection and backend';
+      } else {
+        // Error setting up request
+        errorMessage = err.message || 'Failed to save connector';
+      }
+      
       setError(errorMessage);
-      alert(`Error: ${errorMessage}`); // Show alert for debugging
+      alert(`Error: ${errorMessage}\n\nCheck browser console for details`);
     } finally {
       setSaving(false);
     }

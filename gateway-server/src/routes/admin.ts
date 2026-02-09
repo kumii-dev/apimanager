@@ -6,6 +6,9 @@
 
 import { Router } from 'express';
 import { requireAdmin } from '../middleware/auth';
+import { connectorRoutes } from './connectors';
+import { routeRoutes } from './routesAdmin';
+import { auditLogRoutes } from './auditLogs';
 
 export const adminRoutes = Router();
 
@@ -32,23 +35,17 @@ adminRoutes.get('/modules', (req, res) => {
 /**
  * Connector routes
  */
-import('./connectors').then(module => {
-  adminRoutes.use('/connectors', module.connectorRoutes);
-});
+adminRoutes.use('/connectors', connectorRoutes);
 
 /**
  * Route routes
  */
-import('./routesAdmin').then(module => {
-  adminRoutes.use('/routes', module.routeRoutes);
-});
+adminRoutes.use('/routes', routeRoutes);
 
 /**
  * Audit log routes
  */
-import('./auditLogs').then(module => {
-  adminRoutes.use('/audit-logs', module.auditLogRoutes);
-});
+adminRoutes.use('/audit-logs', auditLogRoutes);
 
 /**
  * Metrics routes
