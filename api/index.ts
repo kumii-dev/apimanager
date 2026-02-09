@@ -11,7 +11,7 @@ let app: any = null;
 // Lazy load app to avoid cold start issues
 const getApp = async () => {
   if (!app) {
-    const { createApp } = await import('../gateway-server/src/server');
+    const { createApp } = await import('../gateway-server/dist/server.js');
     app = createApp();
   }
   return app;
@@ -29,7 +29,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     console.error('Error handling request:', error);
     res.status(500).json({
       error: 'Internal server error',
-      message: process.env.NODE_ENV === 'development' ? String(error) : undefined
+      message: String(error)
     });
   }
 };
