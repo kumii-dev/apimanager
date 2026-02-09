@@ -11,6 +11,7 @@ pnpm-lock.yaml
 .env.*.local
 **/.env
 **/.env.local
+VERCEL_ENV_VARS.md
 
 # Build outputs
 dist/
