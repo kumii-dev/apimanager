@@ -81,7 +81,9 @@ export default function Login() {
     <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: '100vh' }}>
       <Card style={{ maxWidth: '400px', width: '100%' }}>
         <Card.Body>
-          <h2 className="text-center mb-4">🔐 KUMII API Gateway</h2>
+          <h2 className="text-center mb-4">
+            <i className="bi bi-shield-lock"></i> KUMII API Gateway
+          </h2>
           <h5 className="text-center text-muted mb-4">Admin Console</h5>
 
           {error && <Alert variant="danger">{error}</Alert>}

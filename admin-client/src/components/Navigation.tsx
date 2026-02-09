@@ -14,25 +14,31 @@ export default function Navigation() {
     <Navbar bg="dark" variant="dark" expand="lg" className="mb-4">
       <Container>
         <Navbar.Brand as={Link} to="/dashboard">
-          🔐 KUMII API Gateway
+          <i className="bi bi-shield-lock me-2"></i>
+          KUMII API Gateway
         </Navbar.Brand>
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
           <Nav className="me-auto">
             <Nav.Link as={Link} to="/dashboard">
-              📊 Dashboard
+              <i className="bi bi-speedometer2 me-1"></i>
+              Dashboard
             </Nav.Link>
             <Nav.Link as={Link} to="/connectors">
-              🔌 Connectors
+              <i className="bi bi-plug me-1"></i>
+              Connectors
             </Nav.Link>
             <Nav.Link as={Link} to="/routes">
-              🛣️ Routes
+              <i className="bi bi-signpost-2 me-1"></i>
+              Routes
             </Nav.Link>
             <Nav.Link as={Link} to="/audit-logs">
-              📋 Audit Logs
+              <i className="bi bi-clipboard-data me-1"></i>
+              Audit Logs
             </Nav.Link>
           </Nav>
           <Button variant="outline-light" size="sm" onClick={handleLogout}>
+            <i className="bi bi-box-arrow-right me-1"></i>
             Logout
           </Button>
         </Navbar.Collapse>
