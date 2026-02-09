@@ -57,6 +57,14 @@ const getSupabaseClient = (): SupabaseClient => {
           autoRefreshToken: false,
           persistSession: false,
         },
+        global: {
+          fetch: (url, options = {}) => {
+            return fetch(url, {
+              ...options,
+              signal: AbortSignal.timeout(10000), // 10 second timeout
+            });
+          },
+        },
       }
     );
   }
@@ -110,9 +118,29 @@ export const authMiddleware = (options: AuthMiddlewareOptions = {}) => {
 
       const token = authHeader.substring(7);
 
-      // Verify token with Supabase
+      // Verify token with Supabase (with timeout)
       const supabase = getSupabaseClient();
-      const { data: { user }, error } = await supabase.auth.getUser(token);
+      
+      let user;
+      let error;
+      
+      try {
+        const response = await Promise.race([
+          supabase.auth.getUser(token),
+          new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('Auth timeout')), 8000)
+          )
+        ]);
+        user = response.data.user;
+        error = response.error;
+      } catch (err) {
+        console.error('Auth verification error:', err);
+        res.status(500).json({
+          error: 'Internal Server Error',
+          message: 'Authentication service timeout',
+        });
+        return;
+      }
 
       if (error || !user) {
         if (!requireAuth) {
@@ -135,17 +163,46 @@ export const authMiddleware = (options: AuthMiddlewareOptions = {}) => {
         return;
       }
 
-      // Get user profile with role and tenant
+      // Get user profile with role and tenant (with timeout)
       const serviceSupabase = createClient(
         config.supabase.url,
-        config.supabase.serviceRoleKey
+        config.supabase.serviceRoleKey,
+        {
+          global: {
+            fetch: (url, options = {}) => {
+              return fetch(url, {
+                ...options,
+                signal: AbortSignal.timeout(8000), // 8 second timeout
+              });
+            },
+          },
+        }
       );
 
-      const { data: profile, error: profileError } = await serviceSupabase
-        .from('profiles')
-        .select('id, email, role, tenant_id')
-        .eq('id', user.id)
-        .single();
+      let profile;
+      let profileError;
+      
+      try {
+        const response = await Promise.race([
+          serviceSupabase
+            .from('profiles')
+            .select('id, email, role, tenant_id')
+            .eq('id', user.id)
+            .single(),
+          new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('Profile query timeout')), 8000)
+          )
+        ]);
+        profile = response.data;
+        profileError = response.error;
+      } catch (err) {
+        console.error('Profile query error:', err);
+        res.status(500).json({
+          error: 'Internal Server Error',
+          message: 'Database query timeout',
+        });
+        return;
+      }
 
       if (profileError || !profile) {
         auditLogger.logAuth({

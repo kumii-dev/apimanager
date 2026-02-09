@@ -5,6 +5,12 @@
   "buildCommand": "cd gateway-server && npm install && npm run build && cd ../admin-client && npm install && npm run build",
   "outputDirectory": "admin-client/dist",
   "installCommand": "npm install --prefix gateway-server && npm install --prefix admin-client",
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 30,
+      "memory": 1024
+    }
+  },
   "rewrites": [
     {
       "source": "/api/:path*",
