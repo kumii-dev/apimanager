@@ -13,6 +13,7 @@ import {
   Spinner,
 } from 'react-bootstrap';
 import axios from 'axios';
+import { supabase } from '../services/supabase';
 
 interface Connector {
   id: string;
@@ -72,7 +73,19 @@ export default function Connectors() {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.get(`${API_BASE_URL}/admin/connectors`);
+      
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError('Not authenticated');
+        return;
+      }
+      
+      const response = await axios.get(`${API_BASE_URL}/admin/connectors`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
       setConnectors(response.data.connectors || []);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to fetch connectors');
@@ -130,6 +143,13 @@ export default function Connectors() {
       
       console.log('Submitting connector data:', formData);
       
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError('Not authenticated');
+        return;
+      }
+      
       // Prepare the payload
       const payload = {
         name: formData.name,
@@ -150,11 +170,17 @@ export default function Connectors() {
       
       console.log('Sending payload:', payload);
       
+      const axiosConfig = {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      };
+      
       if (editingConnector) {
-        const response = await axios.put(`${API_BASE_URL}/admin/connectors/${editingConnector.id}`, payload);
+        const response = await axios.put(`${API_BASE_URL}/admin/connectors/${editingConnector.id}`, payload, axiosConfig);
         console.log('Update response:', response.data);
       } else {
-        const response = await axios.post(`${API_BASE_URL}/admin/connectors`, payload);
+        const response = await axios.post(`${API_BASE_URL}/admin/connectors`, payload, axiosConfig);
         console.log('Create response:', response.data);
       }
       
@@ -174,7 +200,18 @@ export default function Connectors() {
     if (!confirm('Are you sure you want to delete this connector?')) return;
 
     try {
-      await axios.delete(`${API_BASE_URL}/admin/connectors/${id}`);
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError('Not authenticated');
+        return;
+      }
+      
+      await axios.delete(`${API_BASE_URL}/admin/connectors/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
       fetchConnectors();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to delete connector');
