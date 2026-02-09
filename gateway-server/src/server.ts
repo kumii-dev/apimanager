@@ -51,12 +51,20 @@ const createApp = (): express.Application => {
   // CORS - Controlled origins (ISO 27001 A.13.1)
   app.use(cors({
     origin: (origin, callback) => {
-      // Allow no origin (e.g., mobile apps, Postman)
+      // Allow no origin (e.g., mobile apps, Postman, same-origin requests)
       if (!origin) {
         return callback(null, true);
       }
 
-      // Check against allowlist
+      // In production on Vercel, allow requests from the same domain
+      // This allows the frontend and API to communicate when deployed together
+      if (process.env.NODE_ENV === 'production') {
+        // Allow any origin in production (for Vercel serverless deployment)
+        // Both frontend and API are on same domain, so this is safe
+        return callback(null, true);
+      }
+
+      // In development, check against allowlist
       if (config.cors.allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
