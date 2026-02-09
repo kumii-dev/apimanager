@@ -53,10 +53,22 @@ export default function Login() {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        // Provide helpful error messages for common issues
+        if (error.message.includes('Anonymous sign-ins are disabled')) {
+          throw new Error(
+            'Sign-ups are currently disabled. Please contact your administrator to enable email authentication in Supabase (Authentication → Providers → Email).'
+          );
+        }
+        throw error;
+      }
 
       if (data.user) {
-        setMessage('Account created! Please check your email to verify your account.');
+        if (data.user.identities && data.user.identities.length === 0) {
+          setMessage('This email is already registered. Please use the Sign In button instead.');
+        } else {
+          setMessage('Account created! Please check your email to verify your account.');
+        }
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred during sign up');
