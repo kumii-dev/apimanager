@@ -91,22 +91,10 @@ export class AuditLogger {
   private logger: pino.Logger;
 
   constructor() {
-    // In production/serverless environments, never use pino-pretty
-    // It doesn't work reliably in serverless (Vercel, AWS Lambda, etc.)
-    const usePretty = config.logging.pretty && config.isDevelopment && config.env !== 'production';
-    
+    // Use plain JSON logging for production/serverless
+    // pino-pretty is a dev dependency and not available in production builds
     this.logger = pino({
       level: config.logging.level,
-      ...(usePretty ? {
-        transport: {
-          target: 'pino-pretty',
-          options: {
-            colorize: true,
-            translateTime: 'SYS:standard',
-            ignore: 'pid,hostname',
-          },
-        },
-      } : {}),
       redact: {
         paths: [
           'password',
