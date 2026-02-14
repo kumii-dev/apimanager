@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS ai_risk_assessments (
   -- Assessment metadata
   assessment_version TEXT NOT NULL,
   assessment_date DATE NOT NULL DEFAULT CURRENT_DATE,
-  assessor_id UUID REFERENCES users(id),
+  assessor_id UUID REFERENCES profiles(id),
   status TEXT NOT NULL CHECK (status IN ('draft', 'in_review', 'approved', 'rejected', 'archived')),
   
   -- Risk scoring (NIST AI RMF aligned)
@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS ai_risk_assessments (
   mitigation_effectiveness TEXT,
   
   -- Review and approval
-  reviewed_by UUID REFERENCES users(id),
+  reviewed_by UUID REFERENCES profiles(id),
   reviewed_at TIMESTAMPTZ,
   approval_notes TEXT,
   next_review_date DATE,
@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS ai_incidents (
   root_cause TEXT,
   resolution_steps TEXT,
   resolved_at TIMESTAMPTZ,
-  resolved_by UUID REFERENCES users(id),
+  resolved_by UUID REFERENCES profiles(id),
   preventive_measures TEXT[],
   
   -- Related data
@@ -191,7 +191,7 @@ CREATE TABLE IF NOT EXISTS ai_compliance_reports (
   report_period_start DATE NOT NULL,
   report_period_end DATE NOT NULL,
   generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  generated_by UUID REFERENCES users(id),
+  generated_by UUID REFERENCES profiles(id),
   
   -- Compliance status
   overall_compliance_score NUMERIC CHECK (overall_compliance_score >= 0 AND overall_compliance_score <= 100),
@@ -211,7 +211,7 @@ CREATE TABLE IF NOT EXISTS ai_compliance_reports (
   report_format TEXT CHECK (report_format IN ('pdf', 'html', 'json', 'markdown')),
   
   -- Review and approval
-  reviewed_by UUID REFERENCES users(id),
+  reviewed_by UUID REFERENCES profiles(id),
   reviewed_at TIMESTAMPTZ,
   approval_status TEXT CHECK (approval_status IN ('draft', 'pending_review', 'approved', 'rejected')),
   
@@ -244,7 +244,7 @@ CREATE TABLE IF NOT EXISTS ai_model_versions (
   -- Deployment status
   status TEXT NOT NULL CHECK (status IN ('development', 'testing', 'staging', 'production', 'deprecated', 'retired')),
   deployed_at TIMESTAMPTZ,
-  deployed_by UUID REFERENCES users(id),
+  deployed_by UUID REFERENCES profiles(id),
   deprecated_at TIMESTAMPTZ,
   
   -- Training information
@@ -300,7 +300,7 @@ CREATE TABLE IF NOT EXISTS ai_fairness_tests (
     'group_fairness', 'custom'
   )),
   test_date DATE NOT NULL DEFAULT CURRENT_DATE,
-  tested_by UUID REFERENCES users(id),
+  tested_by UUID REFERENCES profiles(id),
   
   -- Protected attributes tested
   protected_attributes TEXT[] NOT NULL, -- e.g., ['race', 'gender', 'age']
