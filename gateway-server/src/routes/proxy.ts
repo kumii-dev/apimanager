@@ -80,7 +80,7 @@ proxyRoutes.get('/debug/supabase', async (req, res) => {
       });
     }
     
-    res.json({
+    return res.json({
       status: 'ok',
       url_reachable: true,
       message: 'Supabase connection successful',
@@ -89,7 +89,7 @@ proxyRoutes.get('/debug/supabase', async (req, res) => {
     });
   } catch (err: any) {
     console.error('[Debug] Exception:', err);
-    res.status(500).json({
+    return res.status(500).json({
       status: 'error',
       message: err.message,
       url_reachable: err.message !== 'URL fetch timeout',

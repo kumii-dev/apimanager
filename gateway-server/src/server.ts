@@ -20,6 +20,7 @@ import { errorHandler } from './middleware/errorHandler';
 // Import routes
 import { adminRoutes } from './routes/admin';
 import { proxyRoutes } from './routes/proxy';
+import { aiGovernanceRoutes } from './routes/ai-governance';
 
 /**
  * Initialize Express app with security hardening
@@ -146,6 +147,13 @@ const createApp = (): express.Application => {
     authMiddleware({ requireAuth: true }),
     rateLimitMiddleware({ maxRequests: config.rateLimit.adminMaxRequests }),
     adminRoutes
+  );
+
+  // AI Governance API Routes (NIST AI RMF)
+  app.use('/admin/governance',
+    authMiddleware({ requireAuth: true }),
+    rateLimitMiddleware({ maxRequests: config.rateLimit.adminMaxRequests }),
+    aiGovernanceRoutes
   );
 
   // ====================================================================

@@ -34,7 +34,8 @@ router.use(authMiddleware());
 
 router.get('/dashboard', async (req: Request, res: Response) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const supabase = getSupabaseClient();
+    const tenantId = req.user?.tenantId;
     
     // Get AI systems count by risk level
     const { data: connectors, error: connectorsError } = await supabase
@@ -164,7 +165,8 @@ router.get('/dashboard', async (req: Request, res: Response) => {
 
 router.get('/metrics', async (req: Request, res: Response) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const supabase = getSupabaseClient();
+    const tenantId = req.user?.tenantId;
     const { connector_id, metric_type, start_date, end_date } = req.query;
     
     let query = supabase
@@ -208,7 +210,8 @@ router.get('/metrics', async (req: Request, res: Response) => {
 
 router.post('/metrics', async (req: Request, res: Response) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const supabase = getSupabaseClient();
+    const tenantId = req.user?.tenantId;
     const metricData: CreateMetricRequest = req.body;
     
     const { data, error } = await supabase
@@ -244,7 +247,8 @@ router.post('/metrics', async (req: Request, res: Response) => {
 
 router.get('/assessments', async (req: Request, res: Response) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const supabase = getSupabaseClient();
+    const tenantId = req.user?.tenantId;
     const { connector_id, status } = req.query;
     
     let query = supabase
@@ -280,7 +284,8 @@ router.get('/assessments', async (req: Request, res: Response) => {
 
 router.post('/assessments', async (req: Request, res: Response) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const supabase = getSupabaseClient();
+    const tenantId = req.user?.tenantId;
     const assessorId = req.user?.id;
     const assessmentData: CreateAssessmentRequest = req.body;
     
@@ -314,7 +319,8 @@ router.post('/assessments', async (req: Request, res: Response) => {
 
 router.put('/assessments/:id', async (req: Request, res: Response) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const supabase = getSupabaseClient();
+    const tenantId = req.user?.tenantId;
     const { id } = req.params;
     const updates = req.body;
     
@@ -348,7 +354,8 @@ router.put('/assessments/:id', async (req: Request, res: Response) => {
 
 router.get('/incidents', async (req: Request, res: Response) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const supabase = getSupabaseClient();
+    const tenantId = req.user?.tenantId;
     const { connector_id, status, severity } = req.query;
     
     let query = supabase
@@ -388,7 +395,8 @@ router.get('/incidents', async (req: Request, res: Response) => {
 
 router.post('/incidents', async (req: Request, res: Response) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const supabase = getSupabaseClient();
+    const tenantId = req.user?.tenantId;
     const incidentData: CreateIncidentRequest = req.body;
     
     const { data, error } = await supabase
@@ -421,7 +429,8 @@ router.post('/incidents', async (req: Request, res: Response) => {
 
 router.put('/incidents/:id', async (req: Request, res: Response) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const supabase = getSupabaseClient();
+    const tenantId = req.user?.tenantId;
     const { id } = req.params;
     const updates = req.body;
     
@@ -455,7 +464,8 @@ router.put('/incidents/:id', async (req: Request, res: Response) => {
 
 router.get('/fairness-tests', async (req: Request, res: Response) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const supabase = getSupabaseClient();
+    const tenantId = req.user?.tenantId;
     const { connector_id } = req.query;
     
     let query = supabase
@@ -487,7 +497,8 @@ router.get('/fairness-tests', async (req: Request, res: Response) => {
 
 router.post('/fairness-tests', async (req: Request, res: Response) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const supabase = getSupabaseClient();
+    const tenantId = req.user?.tenantId;
     const userId = req.user?.id;
     const testData: CreateFairnessTestRequest = req.body;
     
@@ -525,7 +536,8 @@ router.post('/fairness-tests', async (req: Request, res: Response) => {
 
 router.get('/connectors/:connectorId/governance', async (req: Request, res: Response) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const supabase = getSupabaseClient();
+    const tenantId = req.user?.tenantId;
     const { connectorId } = req.params;
     
     // Get connector info
@@ -610,4 +622,4 @@ router.get('/connectors/:connectorId/governance', async (req: Request, res: Resp
   }
 });
 
-export default router;
+export { router as aiGovernanceRoutes };
