@@ -32,6 +32,9 @@ export default function Navigation() {
               <i className="bi bi-signpost-2 me-1"></i>
               Routes
             </Nav.Link>
+            <Nav.Link as={Link} to="/ai-governance">
+              🛡️ AI Governance
+            </Nav.Link>
             <Nav.Link as={Link} to="/audit-logs">
               <i className="bi bi-clipboard-data me-1"></i>
               Audit Logs

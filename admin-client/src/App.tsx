@@ -15,6 +15,7 @@ import Dashboard from './pages/Dashboard';
 import Connectors from './pages/Connectors';
 import RoutesPage from './pages/Routes';
 import AuditLogs from './pages/AuditLogs';
+import AIGovernance from './pages/AIGovernance';
 import Navigation from './components/Navigation';
 
 // Styles
@@ -149,6 +150,14 @@ function App() {
           element={
             <ProtectedRoute session={session}>
               <AuditLogs />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ai-governance"
+          element={
+            <ProtectedRoute session={session}>
+              <AIGovernance />
             </ProtectedRoute>
           }
         />
