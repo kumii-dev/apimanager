@@ -26,9 +26,35 @@ proxyRoutes.get('/debug/supabase', async (req, res) => {
     console.log('[Debug] Supabase URL:', config.supabase.url);
     console.log('[Debug] Has service role key:', !!config.supabase.serviceRoleKey);
     
+    // First test: Can we reach Supabase URL?
+    const urlTest = await Promise.race([
+      fetch(`${config.supabase.url}/rest/v1/`, {
+        method: 'HEAD',
+        headers: {
+          'apikey': config.supabase.serviceRoleKey,
+        },
+      }),
+      new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('URL fetch timeout')), 5000)
+      )
+    ]);
+    
+    console.log('[Debug] URL reachable, status:', urlTest.status);
+    
+    // Second test: Supabase client query
     const supabase = createClient(
       config.supabase.url,
-      config.supabase.serviceRoleKey
+      config.supabase.serviceRoleKey,
+      {
+        db: {
+          schema: 'public',
+        },
+        global: {
+          headers: {
+            'x-client-info': 'vercel-serverless',
+          },
+        },
+      }
     );
     
     console.log('[Debug] Client created, attempting query');
@@ -48,6 +74,7 @@ proxyRoutes.get('/debug/supabase', async (req, res) => {
       console.error('[Debug] Query error:', error);
       return res.json({
         status: 'error',
+        url_reachable: true,
         message: error.message,
         elapsed_ms: elapsed,
       });
@@ -55,6 +82,7 @@ proxyRoutes.get('/debug/supabase', async (req, res) => {
     
     res.json({
       status: 'ok',
+      url_reachable: true,
       message: 'Supabase connection successful',
       elapsed_ms: elapsed,
       data: data,
@@ -64,6 +92,7 @@ proxyRoutes.get('/debug/supabase', async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: err.message,
+      url_reachable: err.message !== 'URL fetch timeout',
     });
   }
 });
