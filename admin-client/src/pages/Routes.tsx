@@ -12,7 +12,7 @@ import {
   Alert,
   Spinner,
 } from 'react-bootstrap';
-import axios from 'axios';
+import { apiClient } from '../services/api';
 
 interface ApiRoute {
   id: string;
@@ -64,10 +64,6 @@ interface RouteFormData {
   cache_ttl_seconds: number;
 }
 
-// Use /api prefix for Vercel deployment, localhost for local development
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
-  (window.location.hostname === 'localhost' ? 'http://localhost:3000' : '/api');
-
 const MODULE_PREFIXES = [
   '/api/v1/market',
   '/api/v1/capital',
@@ -115,8 +111,8 @@ export default function Routes() {
       setLoading(true);
       setError(null);
       const [routesRes, connectorsRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/admin/routes`),
-        axios.get(`${API_BASE_URL}/admin/connectors`),
+        apiClient.get('/admin/routes'),
+        apiClient.get('/admin/connectors'),
       ]);
       setRoutes(routesRes.data.routes || []);
       setConnectors(connectorsRes.data.connectors || []);
@@ -202,9 +198,9 @@ export default function Routes() {
       };
 
       if (editingRoute) {
-        await axios.put(`${API_BASE_URL}/admin/routes/${editingRoute.id}`, payload);
+        await apiClient.put(`/admin/routes/${editingRoute.id}`, payload);
       } else {
-        await axios.post(`${API_BASE_URL}/admin/routes`, payload);
+        await apiClient.post('/admin/routes', payload);
       }
       handleCloseModal();
       fetchData();
@@ -218,7 +214,7 @@ export default function Routes() {
     if (!confirm('Are you sure you want to delete this route?')) return;
 
     try {
-      await axios.delete(`${API_BASE_URL}/admin/routes/${id}`);
+      await apiClient.delete(`/admin/routes/${id}`);
       fetchData();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to delete route');
