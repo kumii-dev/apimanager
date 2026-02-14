@@ -108,6 +108,12 @@ connectorRoutes.post('/', async (req, res) => {
       auth_type,
       timeout_ms,
       is_active,
+      // AI Classification (NIST AI RMF)
+      is_ai_system,
+      ai_risk_level,
+      nist_categories,
+      ai_use_case,
+      risk_assessment_notes,
       // Auth credentials
       api_key,
       api_key_header,
@@ -123,6 +129,14 @@ connectorRoutes.post('/', async (req, res) => {
       return res.status(400).json({
         error: 'Validation error',
         message: 'Missing required fields: name, type, base_url, auth_type',
+      });
+    }
+
+    // Validate AI risk level if AI system
+    if (is_ai_system && ai_risk_level && !['low', 'medium', 'high', 'critical'].includes(ai_risk_level)) {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'Invalid ai_risk_level. Must be: low, medium, high, or critical',
       });
     }
 
@@ -145,6 +159,12 @@ connectorRoutes.post('/', async (req, res) => {
             : auth_type === 'basic' && basic_username
             ? { username: basic_username }
             : {},
+          // AI Classification fields
+          is_ai_system: is_ai_system || false,
+          ai_risk_level: is_ai_system ? ai_risk_level : null,
+          nist_categories: nist_categories || [],
+          ai_use_case: ai_use_case || null,
+          risk_assessment_notes: risk_assessment_notes || null,
         },
       ])
       .select()
@@ -330,6 +350,12 @@ connectorRoutes.put('/:id', async (req, res) => {
       auth_type,
       timeout_ms,
       is_active,
+      // AI Classification
+      is_ai_system,
+      ai_risk_level,
+      nist_categories,
+      ai_use_case,
+      risk_assessment_notes,
       // Auth credentials (for updating)
       api_key,
       api_key_header,
@@ -360,6 +386,12 @@ connectorRoutes.put('/:id', async (req, res) => {
           : auth_type === 'basic' && basic_username
           ? { username: basic_username }
           : {},
+        // AI Classification fields
+        ...(is_ai_system !== undefined && { is_ai_system }),
+        ...(ai_risk_level && { ai_risk_level }),
+        ...(nist_categories && { nist_categories }),
+        ...(ai_use_case !== undefined && { ai_use_case }),
+        ...(risk_assessment_notes !== undefined && { risk_assessment_notes }),
       })
       .eq('id', id)
       .eq('tenant_id', user.tenantId)

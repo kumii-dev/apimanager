@@ -14,6 +14,7 @@ import {
 } from 'react-bootstrap';
 import axios from 'axios';
 import { supabase } from '../services/supabase';
+import { AIRiskBadge, AISystemBadge } from '../components/AIRiskBadge';
 
 interface Connector {
   id: string;
@@ -23,6 +24,13 @@ interface Connector {
   auth_type: 'none' | 'api_key' | 'bearer' | 'basic' | 'oauth2' | 'custom';
   timeout_ms: number;
   is_active: boolean;
+  // AI Classification (NIST AI RMF)
+  is_ai_system?: boolean;
+  ai_risk_level?: 'low' | 'medium' | 'high' | 'critical' | null;
+  nist_categories?: string[];
+  ai_use_case?: string;
+  risk_assessment_notes?: string;
+  last_risk_review_date?: string;
   created_at: string;
   updated_at: string;
 }
@@ -34,6 +42,12 @@ interface ConnectorFormData {
   auth_type: 'none' | 'api_key' | 'bearer' | 'basic' | 'oauth2' | 'custom';
   timeout_ms: number;
   is_active: boolean;
+  // AI Classification
+  is_ai_system?: boolean;
+  ai_risk_level?: 'low' | 'medium' | 'high' | 'critical' | null;
+  nist_categories?: string[];
+  ai_use_case?: string;
+  risk_assessment_notes?: string;
   // Auth credentials
   api_key?: string;
   api_key_header?: string;
@@ -55,6 +69,7 @@ export default function Connectors() {
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingConnector, setEditingConnector] = useState<Connector | null>(null);
+  const [riskFilter, setRiskFilter] = useState<string>('all');
   const [formData, setFormData] = useState<ConnectorFormData>({
     name: '',
     type: 'rest',
@@ -68,6 +83,17 @@ export default function Connectors() {
   useEffect(() => {
     fetchConnectors();
   }, []);
+
+  const getFilteredConnectors = () => {
+    if (riskFilter === 'all') {
+      return connectors;
+    }
+    if (riskFilter === 'ai-only') {
+      return connectors.filter(c => c.is_ai_system);
+    }
+    // Filter by risk level (low, medium, high, critical)
+    return connectors.filter(c => c.ai_risk_level === riskFilter);
+  };
 
   const fetchConnectors = async () => {
     try {
@@ -105,6 +131,12 @@ export default function Connectors() {
         auth_type: connector.auth_type,
         timeout_ms: connector.timeout_ms,
         is_active: connector.is_active,
+        // AI Classification fields
+        is_ai_system: connector.is_ai_system,
+        ai_risk_level: connector.ai_risk_level,
+        nist_categories: connector.nist_categories,
+        ai_use_case: connector.ai_use_case,
+        risk_assessment_notes: connector.risk_assessment_notes,
       });
     } else {
       setEditingConnector(null);
@@ -158,6 +190,12 @@ export default function Connectors() {
         auth_type: formData.auth_type,
         timeout_ms: formData.timeout_ms,
         is_active: formData.is_active,
+        // AI Classification fields
+        ...(formData.is_ai_system !== undefined && { is_ai_system: formData.is_ai_system }),
+        ...(formData.ai_risk_level && { ai_risk_level: formData.ai_risk_level }),
+        ...(formData.nist_categories && { nist_categories: formData.nist_categories }),
+        ...(formData.ai_use_case && { ai_use_case: formData.ai_use_case }),
+        ...(formData.risk_assessment_notes && { risk_assessment_notes: formData.risk_assessment_notes }),
         // Add auth credentials if present
         ...(formData.api_key && { api_key: formData.api_key }),
         ...(formData.api_key_header && { api_key_header: formData.api_key_header }),
@@ -312,11 +350,31 @@ export default function Connectors() {
                   </Button>
                 </div>
               ) : (
+                <>
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                      <strong>{getFilteredConnectors().length}</strong> connector{getFilteredConnectors().length !== 1 ? 's' : ''}
+                    </div>
+                    <Form.Select 
+                      style={{ width: 'auto' }}
+                      value={riskFilter}
+                      onChange={(e) => setRiskFilter(e.target.value)}
+                    >
+                      <option value="all">All Connectors</option>
+                      <option value="ai-only">AI Systems Only</option>
+                      <option value="low">Low Risk</option>
+                      <option value="medium">Medium Risk</option>
+                      <option value="high">High Risk</option>
+                      <option value="critical">Critical Risk</option>
+                    </Form.Select>
+                  </div>
+                  
                 <Table responsive hover>
                   <thead>
                     <tr>
                       <th>Name</th>
                       <th>Type</th>
+                      <th>AI Classification</th>
                       <th>Base URL</th>
                       <th>Auth Type</th>
                       <th>Timeout</th>
@@ -325,7 +383,7 @@ export default function Connectors() {
                     </tr>
                   </thead>
                   <tbody>
-                    {connectors.map((connector) => (
+                    {getFilteredConnectors().map((connector) => (
                       <tr key={connector.id}>
                         <td>
                           <strong>{connector.name}</strong>
@@ -334,6 +392,14 @@ export default function Connectors() {
                           <Badge bg={getTypeColor(connector.type)}>
                             {connector.type.toUpperCase()}
                           </Badge>
+                        </td>
+                        <td>
+                          <div className="d-flex gap-1 flex-wrap">
+                            {connector.is_ai_system && <AISystemBadge isAISystem={true} size="sm" />}
+                            {connector.ai_risk_level && (
+                              <AIRiskBadge riskLevel={connector.ai_risk_level} size="sm" />
+                            )}
+                          </div>
                         </td>
                         <td>
                           <code className="text-muted small">{connector.base_url}</code>
@@ -366,6 +432,7 @@ export default function Connectors() {
                     ))}
                   </tbody>
                 </Table>
+                </>
               )}
             </Card.Body>
           </Card>
@@ -606,6 +673,110 @@ export default function Connectors() {
                 </Form.Group>
               </Col>
             </Row>
+
+            {/* AI Classification Section */}
+            <h5 className="mt-4 mb-3">
+              <i className="bi bi-cpu me-2"></i>
+              AI Classification (NIST AI RMF)
+            </h5>
+            <Row>
+              <Col md={12}>
+                <Form.Group className="mb-3">
+                  <Form.Check
+                    type="checkbox"
+                    id="is_ai_system"
+                    label="This connector serves an AI/ML system"
+                    checked={formData.is_ai_system || false}
+                    onChange={(e) => setFormData({ ...formData, is_ai_system: e.target.checked })}
+                  />
+                  <Form.Text className="text-muted">
+                    Enable AI risk classification and NIST AI RMF governance
+                  </Form.Text>
+                </Form.Group>
+              </Col>
+            </Row>
+
+            {formData.is_ai_system && (
+              <>
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>AI Risk Level</Form.Label>
+                      <Form.Select
+                        value={formData.ai_risk_level || ''}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          ai_risk_level: e.target.value as 'low' | 'medium' | 'high' | 'critical' 
+                        })}
+                        required={formData.is_ai_system}
+                      >
+                        <option value="">Select risk level...</option>
+                        <option value="low">Low Risk</option>
+                        <option value="medium">Medium Risk</option>
+                        <option value="high">High Risk</option>
+                        <option value="critical">Critical Risk</option>
+                      </Form.Select>
+                      <Form.Text className="text-muted">
+                        NIST AI RMF risk classification
+                      </Form.Text>
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>AI Use Case</Form.Label>
+                      <Form.Control
+                        type="text"
+                        placeholder="e.g., Customer support chatbot"
+                        value={formData.ai_use_case || ''}
+                        onChange={(e) => setFormData({ ...formData, ai_use_case: e.target.value })}
+                      />
+                      <Form.Text className="text-muted">
+                        Brief description of the AI application
+                      </Form.Text>
+                    </Form.Group>
+                  </Col>
+                </Row>
+                <Row>
+                  <Col md={12}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>NIST Categories</Form.Label>
+                      <Form.Control
+                        type="text"
+                        placeholder="e.g., GOVERN-1.1, MAP-1.1, MEASURE-2.1"
+                        value={formData.nist_categories?.join(', ') || ''}
+                        onChange={(e) => {
+                          const categories = e.target.value
+                            .split(',')
+                            .map(c => c.trim())
+                            .filter(c => c);
+                          setFormData({ ...formData, nist_categories: categories });
+                        }}
+                      />
+                      <Form.Text className="text-muted">
+                        Comma-separated NIST AI RMF categories (e.g., GOVERN-1.1, MAP-1.1)
+                      </Form.Text>
+                    </Form.Group>
+                  </Col>
+                </Row>
+                <Row>
+                  <Col md={12}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Risk Assessment Notes</Form.Label>
+                      <Form.Control
+                        as="textarea"
+                        rows={3}
+                        placeholder="Document risk factors, mitigation strategies, and assessment rationale..."
+                        value={formData.risk_assessment_notes || ''}
+                        onChange={(e) => setFormData({ ...formData, risk_assessment_notes: e.target.value })}
+                      />
+                      <Form.Text className="text-muted">
+                        Detailed risk assessment documentation
+                      </Form.Text>
+                    </Form.Group>
+                  </Col>
+                </Row>
+              </>
+            )}
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={handleCloseModal} disabled={saving}>
