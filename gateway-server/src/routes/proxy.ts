@@ -144,14 +144,18 @@ proxyRoutes.all('*', async (req, res) => {
     }
 
     // Match route by pattern
+    // Note: req.path has /api stripped (e.g., /v1/market/releases/123)
+    // But database stores full path with module_prefix (e.g., /api/v1/market + /releases/:id)
     let matchedRoute = null;
     let pathParams: Record<string, string> = {};
 
     for (const route of routes) {
-      const fullPattern = `${route.module_prefix}${route.path_pattern}`;
+      // Remove /api prefix from module_prefix since Express already stripped it
+      const modulePrefix = route.module_prefix.replace(/^\/api/, '');
+      const fullPattern = `${modulePrefix}${route.path_pattern}`;
       console.log('[Proxy] Testing pattern:', fullPattern, 'against:', req.path);
       
-      // Convert path pattern to regex (e.g., /releases/:ocid -> /releases/([^/]+))
+      // Convert path pattern to regex (e.g., /v1/market/releases/:ocid -> /v1/market/releases/([^/]+))
       const regexPattern = fullPattern.replace(/:([^/]+)/g, '([^/]+)');
       const regex = new RegExp(`^${regexPattern}$`);
       const match = req.path.match(regex);
