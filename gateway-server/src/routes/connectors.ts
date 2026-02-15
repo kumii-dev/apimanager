@@ -6,15 +6,14 @@
 
 import { Router } from 'express';
 import { createClient } from '@supabase/supabase-js';
-import { requireAdmin } from '../middleware/auth';
 import { config } from '../config';
 import { CryptoService } from '../services/crypto';
 import { auditLogger } from '../services/audit';
 
 export const connectorRoutes = Router();
 
-// All routes require admin access
-connectorRoutes.use(requireAdmin());
+// Auth is already handled by parent adminRoutes
+// No need to apply requireAdmin() again here
 
 // Initialize crypto service for secret encryption
 const cryptoService = new CryptoService();

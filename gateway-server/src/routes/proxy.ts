@@ -5,8 +5,10 @@
 
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth';
+import { applyETendersFilter } from '../middleware/etendersFilter';
 import { config } from '../config';
 import { createClient } from '@supabase/supabase-js';
+import { auditLogger } from '../services/audit';
 
 export const proxyRoutes = Router();
 
@@ -105,6 +107,8 @@ proxyRoutes.use(authMiddleware({ requireAuth: false }));
  * Matches all /api/v1/* routes
  */
 proxyRoutes.all('*', async (req, res) => {
+  const startTime = Date.now();
+  
   try {
     console.log('[Proxy] Incoming request:', req.method, req.path);
     
@@ -240,7 +244,43 @@ proxyRoutes.all('*', async (req, res) => {
 
     console.log('[Proxy] Upstream response:', upstreamResponse.status);
 
-    // Forward response to client
+    // Log proxy request for audit trail
+    const duration = Date.now() - startTime;
+    auditLogger.logProxyRequest({
+      userId: req.user?.id,
+      tenantId: req.user?.tenantId || matchedRoute.tenant_id,
+      requestId: String(req.id),
+      method: req.method,
+      path: req.path,
+      statusCode: upstreamResponse.status,
+      duration,
+      connectorId: matchedRoute.connector_id,
+      success: upstreamResponse.status >= 200 && upstreamResponse.status < 400,
+    });
+
+    // Apply eTenders filtering middleware for specific routes
+    const isETendersRoute = matchedRoute.connector_name === 'eTenders API';
+    if (isETendersRoute) {
+      // Apply filter middleware
+      applyETendersFilter(req, res, () => {
+        // Forward response to client
+        res.status(upstreamResponse.status);
+        
+        // Copy relevant headers
+        const headersToForward = ['content-type', 'cache-control', 'etag'];
+        headersToForward.forEach(header => {
+          const value = upstreamResponse.headers.get(header);
+          if (value) {
+            res.setHeader(header, value);
+          }
+        });
+
+        res.json(data);
+      });
+      return;
+    }
+
+    // Forward response to client without filtering
     res.status(upstreamResponse.status);
     
     // Copy relevant headers
@@ -256,6 +296,19 @@ proxyRoutes.all('*', async (req, res) => {
 
   } catch (error: any) {
     console.error('[Proxy] Error:', error);
+    
+    // Log failed proxy request
+    const duration = Date.now() - startTime;
+    auditLogger.logProxyRequest({
+      userId: req.user?.id,
+      tenantId: req.user?.tenantId,
+      requestId: String(req.id),
+      method: req.method,
+      path: req.path,
+      statusCode: error.name === 'AbortError' ? 504 : 502,
+      duration,
+      success: false,
+    });
     
     if (error.name === 'AbortError' || error.message?.includes('timeout')) {
       return res.status(504).json({

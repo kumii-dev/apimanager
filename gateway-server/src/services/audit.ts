@@ -5,6 +5,7 @@
  */
 
 import pino from 'pino';
+import { createClient } from '@supabase/supabase-js';
 import { config } from '../config';
 
 /**
@@ -162,12 +163,11 @@ export class AuditLogger {
         break;
     }
 
-    // In production, also persist to Supabase audit_logs table
-    if (config.isProduction && !config.dev.mode) {
-      this.persistToDatabase(entry).catch(err => {
-        this.logger.error({ err }, 'Failed to persist audit log to database');
-      });
-    }
+    // Persist to Supabase audit_logs table
+    // Always persist audit logs (development and production)
+    this.persistToDatabase(entry).catch(err => {
+      this.logger.error({ err }, 'Failed to persist audit log to database');
+    });
   }
 
   /**
@@ -175,10 +175,43 @@ export class AuditLogger {
    * 
    * @param entry - Audit log entry
    */
-  private async persistToDatabase(_entry: AuditLogEntry): Promise<void> {
-    // This will be implemented with Supabase client
-    // For now, just log that it would be persisted
-    // Implementation in supabase service
+  private async persistToDatabase(entry: AuditLogEntry): Promise<void> {
+    try {
+      // Create Supabase client with service role for audit logs
+      const supabase = createClient(
+        config.supabase.url,
+        config.supabase.serviceRoleKey,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+          },
+        }
+      );
+
+      const { error } = await supabase
+        .from('audit_logs')
+        .insert({
+          tenant_id: entry.tenantId,
+          user_id: entry.userId,
+          action: entry.action,
+          resource_type: entry.resourceType,
+          resource_id: entry.resourceId,
+          request_id: entry.requestId,
+          ip_address: entry.ipAddress,
+          user_agent: entry.userAgent,
+          details: entry.details,
+          severity: entry.severity || 'info',
+          status: entry.status || 'success',
+        });
+
+      if (error) {
+        throw error;
+      }
+    } catch (err) {
+      // Don't throw - logging errors shouldn't crash the app
+      this.logger.error({ err }, 'Failed to persist audit log to database');
+    }
   }
 
   /**

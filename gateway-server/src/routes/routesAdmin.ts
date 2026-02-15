@@ -5,7 +5,6 @@
  */
 
 import { Router } from 'express';
-import { requireAdmin } from '../middleware/auth';
 import { createClient } from '@supabase/supabase-js';
 import { config } from '../config';
 import { auditLogger } from '../services/audit';
@@ -24,8 +23,8 @@ const supabase = createClient(
   }
 );
 
-// All routes require admin access
-routeRoutes.use(requireAdmin());
+// Auth is already handled by parent adminRoutes
+// No need to apply requireAdmin() again here
 
 /**
  * GET /admin/routes
