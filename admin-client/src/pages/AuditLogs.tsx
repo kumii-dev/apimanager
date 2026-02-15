@@ -14,7 +14,7 @@ import {
   Modal,
   Pagination,
 } from 'react-bootstrap';
-import axios from 'axios';
+import { auditLogsApi } from '../services/api';
 
 interface AuditLog {
   id: string;
@@ -40,10 +40,6 @@ interface AuditLogFilters {
   page: number;
   pageSize: number;
 }
-
-// Use /api prefix for Vercel deployment, localhost for local development
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
-  (window.location.hostname === 'localhost' ? 'http://localhost:3000' : '/api');
 
 const SEVERITY_LEVELS = ['debug', 'info', 'warn', 'error', 'critical'];
 const STATUS_VALUES = ['success', 'failure', 'pending'];
@@ -79,17 +75,18 @@ export default function AuditLogs() {
       setLoading(true);
       setError(null);
       
-      const params = new URLSearchParams();
-      params.append('page', filters.page.toString());
-      params.append('pageSize', filters.pageSize.toString());
+      const params: any = {
+        page: filters.page,
+        pageSize: filters.pageSize,
+      };
       
-      if (filters.action) params.append('action', filters.action);
-      if (filters.resource_type) params.append('resource_type', filters.resource_type);
-      if (filters.severity) params.append('severity', filters.severity);
-      if (filters.status) params.append('status', filters.status);
-      if (filters.search) params.append('search', filters.search);
+      if (filters.action) params.action = filters.action;
+      if (filters.resource_type) params.resource_type = filters.resource_type;
+      if (filters.severity) params.severity = filters.severity;
+      if (filters.status) params.status = filters.status;
+      if (filters.search) params.search = filters.search;
 
-      const response = await axios.get(`${API_BASE_URL}/admin/audit-logs?${params.toString()}`);
+      const response = await auditLogsApi.list(params);
       setLogs(response.data.logs || []);
       setTotalLogs(response.data.total || 0);
     } catch (err: any) {
@@ -223,35 +220,35 @@ export default function AuditLogs() {
   };
 
   return (
-    <Container className="mt-4">
-      <Row className="mb-4">
+    <Container className="page-container">
+      <Row className="page-section">
         <Col>
-          <div className="d-flex justify-content-between align-items-center">
+          <div className="page-header">
             <div>
-              <h1>
+              <h1 className="page-title type-h1">
                 <i className="bi bi-clipboard-data me-2"></i>
                 Audit Logs
               </h1>
-              <p className="text-muted">
+              <p className="page-subtitle type-subtitle">
                 Security and activity monitoring (ISO 27001 A.12.4 compliant)
               </p>
             </div>
-            <div>
-              <Badge bg="primary" className="me-2">
+            <div className="page-stats">
+              <span className="stat-chip">
                 Total: {totalLogs.toLocaleString()}
-              </Badge>
-              <Badge bg="secondary">
+              </span>
+              <span className="stat-chip secondary">
                 Page {filters.page} of {totalPages}
-              </Badge>
+              </span>
             </div>
           </div>
         </Col>
       </Row>
 
       {/* Filters */}
-      <Row className="mb-3">
+  <Row className="page-section">
         <Col>
-          <Card>
+          <Card className="filter-card">
             <Card.Body>
               <Row className="g-3">
                 <Col md={3}>
@@ -346,18 +343,18 @@ export default function AuditLogs() {
       )}
 
       {/* Logs Table */}
-      <Row>
+  <Row className="page-section">
         <Col>
-          <Card>
+          <Card className="data-card">
             <Card.Body>
               {loading ? (
-                <div className="text-center py-5">
+                <div className="empty-state">
                   <Spinner animation="border" role="status">
                     <span className="visually-hidden">Loading...</span>
                   </Spinner>
                 </div>
               ) : logs.length === 0 ? (
-                <div className="text-center py-5">
+                <div className="empty-state">
                   <i className="bi bi-inbox display-1 text-muted"></i>
                   <h5 className="mt-3 text-muted">No audit logs found</h5>
                   <p className="text-muted">
@@ -368,68 +365,70 @@ export default function AuditLogs() {
                 </div>
               ) : (
                 <>
-                  <Table responsive hover size="sm">
-                    <thead>
-                      <tr>
-                        <th style={{ width: '180px' }}>Timestamp</th>
-                        <th>Action</th>
-                        <th>Resource</th>
-                        <th>Severity</th>
-                        <th>Status</th>
-                        <th>IP Address</th>
-                        <th className="text-end">Details</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {logs.map((log) => (
-                        <tr key={log.id}>
-                          <td className="small text-muted">
-                            {formatTimestamp(log.created_at)}
-                          </td>
-                          <td>
-                            <code className="small">{formatAction(log.action)}</code>
-                          </td>
-                          <td>
-                            <Badge bg="light" text="dark" className="small">
-                              {log.resource_type}
-                            </Badge>
-                            {log.resource_id && (
-                              <div className="small text-muted">
-                                {log.resource_id.substring(0, 8)}...
-                              </div>
-                            )}
-                          </td>
-                          <td>
-                            <Badge bg={getSeverityColor(log.severity)}>
-                              {log.severity}
-                            </Badge>
-                          </td>
-                          <td>
-                            <Badge bg={getStatusColor(log.status)}>
-                              {log.status === 'success' && <i className="bi bi-check-circle me-1"></i>}
-                              {log.status === 'failure' && <i className="bi bi-x-circle me-1"></i>}
-                              {log.status === 'pending' && <i className="bi bi-clock me-1"></i>}
-                              {log.status}
-                            </Badge>
-                          </td>
-                          <td className="small text-muted">{log.ip_address || '-'}</td>
-                          <td className="text-end">
-                            <Button
-                              variant="outline-primary"
-                              size="sm"
-                              onClick={() => handleShowDetails(log)}
-                            >
-                              <i className="bi bi-eye"></i>
-                            </Button>
-                          </td>
+                  <div className="table-responsive">
+                    <Table responsive hover size="sm" className="data-table align-middle">
+                      <thead>
+                        <tr>
+                          <th style={{ width: '180px' }}>Timestamp</th>
+                          <th>Action</th>
+                          <th>Resource</th>
+                          <th>Severity</th>
+                          <th>Status</th>
+                          <th>IP Address</th>
+                          <th className="text-end">Details</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </Table>
+                      </thead>
+                      <tbody>
+                        {logs.map((log) => (
+                          <tr key={log.id}>
+                            <td className="small text-muted">
+                              {formatTimestamp(log.created_at)}
+                            </td>
+                            <td>
+                              <code className="small">{formatAction(log.action)}</code>
+                            </td>
+                            <td>
+                              <Badge bg="light" text="dark" className="small">
+                                {log.resource_type}
+                              </Badge>
+                              {log.resource_id && (
+                                <div className="small text-muted">
+                                  {log.resource_id.substring(0, 8)}...
+                                </div>
+                              )}
+                            </td>
+                            <td>
+                              <Badge bg={getSeverityColor(log.severity)}>
+                                {log.severity}
+                              </Badge>
+                            </td>
+                            <td>
+                              <Badge bg={getStatusColor(log.status)}>
+                                {log.status === 'success' && <i className="bi bi-check-circle me-1"></i>}
+                                {log.status === 'failure' && <i className="bi bi-x-circle me-1"></i>}
+                                {log.status === 'pending' && <i className="bi bi-clock me-1"></i>}
+                                {log.status}
+                              </Badge>
+                            </td>
+                            <td className="small text-muted">{log.ip_address || '-'}</td>
+                            <td className="text-end">
+                              <Button
+                                variant="outline-primary"
+                                size="sm"
+                                onClick={() => handleShowDetails(log)}
+                              >
+                                <i className="bi bi-eye"></i>
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+                  </div>
 
                   {/* Pagination */}
                   {totalPages > 1 && (
-                    <div className="d-flex justify-content-between align-items-center mt-3">
+                    <div className="d-flex justify-content-between align-items-center px-4 py-3 border-top">
                       <div className="text-muted small">
                         Showing {(filters.page - 1) * filters.pageSize + 1} to{' '}
                         {Math.min(filters.page * filters.pageSize, totalLogs)} of{' '}

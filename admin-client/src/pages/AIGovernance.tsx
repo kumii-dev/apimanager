@@ -155,18 +155,18 @@ const AIGovernance: React.FC = () => {
   }
 
   return (
-    <Container fluid className="py-4">
+    <Container fluid className="page-container px-4">
       {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="page-header page-section">
         <div>
-          <h2 className="mb-1">🛡️ AI Governance Dashboard</h2>
-          <p className="text-muted mb-0">NIST AI RMF Compliance & Monitoring</p>
+          <h2 className="page-title type-h1">🛡️ AI Governance Dashboard</h2>
+          <p className="page-subtitle type-subtitle">NIST AI RMF Compliance & Monitoring</p>
         </div>
-        <div>
-          <Button variant="outline-primary" size="sm" className="me-2" onClick={() => navigate('/ai-governance/assessments')}>
+        <div className="d-flex flex-wrap gap-2">
+          <Button variant="outline-primary" size="sm" onClick={() => navigate('/ai-governance/assessments')}>
             📋 Risk Assessments
           </Button>
-          <Button variant="outline-danger" size="sm" className="me-2" onClick={() => navigate('/ai-governance/incidents')}>
+          <Button variant="outline-danger" size="sm" onClick={() => navigate('/ai-governance/incidents')}>
             ⚠️ Incidents
           </Button>
           <Button variant="outline-success" size="sm" onClick={() => navigate('/ai-governance/monitoring')}>
@@ -175,11 +175,11 @@ const AIGovernance: React.FC = () => {
         </div>
       </div>
 
-      <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k || 'overview')} className="mb-4">
+  <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k || 'overview')} className="page-section">
         {/* OVERVIEW TAB */}
         <Tab eventKey="overview" title="📈 Overview">
           {/* Key Metrics Row */}
-          <Row className="mb-4">
+          <Row className="page-section">
             <Col md={3}>
               <Card className="text-center border-primary">
                 <Card.Body>
@@ -218,7 +218,7 @@ const AIGovernance: React.FC = () => {
           </Row>
 
           {/* Risk Distribution */}
-          <Row className="mb-4">
+          <Row className="page-section">
             <Col md={6}>
               <Card>
                 <Card.Header className="bg-light">

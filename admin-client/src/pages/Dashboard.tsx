@@ -30,13 +30,31 @@ export default function Dashboard() {
     );
   }
 
+  const requestBars = [35, 60, 45, 80, 55, 70, 62];
+  const latencyBars = [25, 40, 30, 52, 38, 46, 34];
+
   return (
-    <Container fluid className="mt-4 px-4">
-      {/* Header */}
-      <Row className="mb-4">
+    <Container fluid className="page-container px-4">
+      <Row className="page-section">
         <Col>
-          <h1 className="mb-1">Admin Dashboard</h1>
-          <p className="text-muted">Manage connectors, routes, and platform activities</p>
+          <Card className="dashboard-hero">
+            <Card.Body className="d-flex flex-column flex-lg-row justify-content-between gap-3">
+              <div>
+                <h1 className="type-display">Admin Command Center</h1>
+                <p className="type-subtitle">Monitor API health, manage integrations, and keep governance aligned.</p>
+              </div>
+              <div className="d-flex gap-2 align-items-center">
+                <Button variant="primary" onClick={() => navigate('/connectors')}>
+                  <i className="bi bi-plug me-2"></i>
+                  Review Connectors
+                </Button>
+                <Button variant="outline-secondary" onClick={() => navigate('/audit-logs')}>
+                  <i className="bi bi-shield-check me-2"></i>
+                  Security Logs
+                </Button>
+              </div>
+            </Card.Body>
+          </Card>
         </Col>
       </Row>
 
@@ -78,55 +96,106 @@ export default function Dashboard() {
         <Tab.Content>
           <Tab.Pane eventKey="overview">
             {/* Stats Cards */}
-            <Row className="mb-4">
+            <Row className="page-section">
               <Col lg={3} md={6} className="mb-3">
-                <Card className="h-100 border-0 shadow-sm">
+                <Card className="kpi-card h-100">
                   <Card.Body>
-                    <div className="d-flex justify-content-between align-items-start">
+                    <div className="d-flex justify-content-between">
                       <div>
-                        <div className="text-muted small mb-1">Total Connectors</div>
-                        <h2 className="mb-0">0</h2>
+                        <div className="kpi-label">Total Connectors</div>
+                        <div className="kpi-value">0</div>
+                        <div className="kpi-meta">Across all environments</div>
                       </div>
-                      <i className="bi bi-plug fs-3 text-primary"></i>
+                      <div className="kpi-icon">
+                        <i className="bi bi-plug"></i>
+                      </div>
                     </div>
                   </Card.Body>
                 </Card>
               </Col>
               <Col lg={3} md={6} className="mb-3">
-                <Card className="h-100 border-0 shadow-sm">
+                <Card className="kpi-card h-100">
                   <Card.Body>
-                    <div className="d-flex justify-content-between align-items-start">
+                    <div className="d-flex justify-content-between">
                       <div>
-                        <div className="text-muted small mb-1">Active Routes</div>
-                        <h2 className="mb-0">0</h2>
+                        <div className="kpi-label">Active Routes</div>
+                        <div className="kpi-value">0</div>
+                        <div className="kpi-meta">Mapped endpoints</div>
                       </div>
-                      <i className="bi bi-signpost-2 fs-3 text-success"></i>
+                      <div className="kpi-icon">
+                        <i className="bi bi-signpost-2"></i>
+                      </div>
                     </div>
                   </Card.Body>
                 </Card>
               </Col>
               <Col lg={3} md={6} className="mb-3">
-                <Card className="h-100 border-0 shadow-sm">
+                <Card className="kpi-card h-100">
                   <Card.Body>
-                    <div className="d-flex justify-content-between align-items-start">
+                    <div className="d-flex justify-content-between">
                       <div>
-                        <div className="text-muted small mb-1">Total Requests</div>
-                        <h2 className="mb-0">0</h2>
+                        <div className="kpi-label">Requests (7d)</div>
+                        <div className="kpi-value">0</div>
+                        <div className="kpi-meta">Rolling volume</div>
                       </div>
-                      <i className="bi bi-graph-up fs-3 text-info"></i>
+                      <div className="kpi-icon">
+                        <i className="bi bi-graph-up"></i>
+                      </div>
                     </div>
                   </Card.Body>
                 </Card>
               </Col>
               <Col lg={3} md={6} className="mb-3">
-                <Card className="h-100 border-0 shadow-sm">
+                <Card className="kpi-card h-100">
                   <Card.Body>
-                    <div className="d-flex justify-content-between align-items-start">
+                    <div className="d-flex justify-content-between">
                       <div>
-                        <div className="text-muted small mb-1">System Health</div>
-                        <h2 className="mb-0 text-success">Healthy</h2>
+                        <div className="kpi-label">System Health</div>
+                        <div className="kpi-value text-success">Healthy</div>
+                        <div className="kpi-meta">All services stable</div>
                       </div>
-                      <i className="bi bi-activity fs-3 text-success"></i>
+                      <div className="kpi-icon">
+                        <i className="bi bi-activity"></i>
+                      </div>
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
+
+            <Row className="page-section g-3">
+              <Col lg={6}>
+                <Card className="chart-card">
+                  <Card.Body>
+                    <div className="chart-header">
+                      <div>
+                        <div className="chart-title">Request Volume</div>
+                        <div className="chart-subtitle">Last 7 days</div>
+                      </div>
+                      <div className="chart-metric">0 req</div>
+                    </div>
+                    <div className="mini-chart">
+                      {requestBars.map((height, index) => (
+                        <span key={index} style={{ height: `${height}%` }} />
+                      ))}
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col lg={6}>
+                <Card className="chart-card">
+                  <Card.Body>
+                    <div className="chart-header">
+                      <div>
+                        <div className="chart-title">Latency Overview</div>
+                        <div className="chart-subtitle">Average response time</div>
+                      </div>
+                      <div className="chart-metric">0 ms</div>
+                    </div>
+                    <div className="mini-chart">
+                      {latencyBars.map((height, index) => (
+                        <span key={index} style={{ height: `${height}%` }} />
+                      ))}
                     </div>
                   </Card.Body>
                 </Card>
@@ -134,17 +203,17 @@ export default function Dashboard() {
             </Row>
 
             {/* Quick Actions */}
-            <Card className="border-0 shadow-sm">
+            <Card>
               <Card.Body>
-                <h5 className="mb-3">Quick Actions</h5>
-                <p className="text-muted small mb-4">Common administrative tasks</p>
+                <h5 className="type-h3 mb-3">Quick Actions</h5>
+                <p className="type-caption mb-4">Common administrative tasks</p>
                 
-                <Row className="g-3">
+                <Row className="g-3 quick-actions-grid">
                   <Col md={4}>
                     <Button 
-                      variant="secondary"
+                      variant="light"
                       className="w-100 py-3 d-flex flex-column align-items-center justify-content-center"
-                      style={{ backgroundColor: '#7d8471', borderColor: '#7d8471', minHeight: '100px' }}
+                      style={{ minHeight: '110px' }}
                       onClick={() => navigate('/connectors')}
                     >
                       <i className="bi bi-plug fs-4 mb-2"></i>
@@ -153,9 +222,9 @@ export default function Dashboard() {
                   </Col>
                   <Col md={4}>
                     <Button 
-                      variant="secondary"
+                      variant="light"
                       className="w-100 py-3 d-flex flex-column align-items-center justify-content-center"
-                      style={{ backgroundColor: '#7d8471', borderColor: '#7d8471', minHeight: '100px' }}
+                      style={{ minHeight: '110px' }}
                       onClick={() => navigate('/routes')}
                     >
                       <i className="bi bi-signpost-2 fs-4 mb-2"></i>
@@ -164,9 +233,9 @@ export default function Dashboard() {
                   </Col>
                   <Col md={4}>
                     <Button 
-                      variant="secondary"
+                      variant="light"
                       className="w-100 py-3 d-flex flex-column align-items-center justify-content-center"
-                      style={{ backgroundColor: '#7d8471', borderColor: '#7d8471', minHeight: '100px' }}
+                      style={{ minHeight: '110px' }}
                       onClick={() => navigate('/audit-logs')}
                     >
                       <i className="bi bi-shield-check fs-4 mb-2"></i>
@@ -175,9 +244,9 @@ export default function Dashboard() {
                   </Col>
                   <Col md={4}>
                     <Button 
-                      variant="secondary"
+                      variant="light"
                       className="w-100 py-3 d-flex flex-column align-items-center justify-content-center"
-                      style={{ backgroundColor: '#7d8471', borderColor: '#7d8471', minHeight: '100px' }}
+                      style={{ minHeight: '110px' }}
                       onClick={() => navigate('/connectors')}
                     >
                       <i className="bi bi-graph-up-arrow fs-4 mb-2"></i>
@@ -186,9 +255,9 @@ export default function Dashboard() {
                   </Col>
                   <Col md={4}>
                     <Button 
-                      variant="secondary"
+                      variant="light"
                       className="w-100 py-3 d-flex flex-column align-items-center justify-content-center"
-                      style={{ backgroundColor: '#7d8471', borderColor: '#7d8471', minHeight: '100px' }}
+                      style={{ minHeight: '110px' }}
                       onClick={() => navigate('/audit-logs')}
                     >
                       <i className="bi bi-activity fs-4 mb-2"></i>
@@ -199,7 +268,7 @@ export default function Dashboard() {
                     <Button 
                       variant="light"
                       className="w-100 py-3 d-flex flex-column align-items-center justify-content-center border"
-                      style={{ minHeight: '100px' }}
+                      style={{ minHeight: '110px' }}
                       onClick={() => navigate('/routes')}
                     >
                       <i className="bi bi-file-earmark-text fs-4 mb-2"></i>
@@ -208,9 +277,9 @@ export default function Dashboard() {
                   </Col>
                   <Col md={4}>
                     <Button 
-                      variant="secondary"
+                      variant="light"
                       className="w-100 py-3 d-flex flex-column align-items-center justify-content-center"
-                      style={{ backgroundColor: '#7d8471', borderColor: '#7d8471', minHeight: '100px' }}
+                      style={{ minHeight: '110px' }}
                       onClick={() => navigate('/audit-logs')}
                     >
                       <i className="bi bi-file-earmark-check fs-4 mb-2"></i>
@@ -219,9 +288,9 @@ export default function Dashboard() {
                   </Col>
                   <Col md={4}>
                     <Button 
-                      variant="secondary"
+                      variant="light"
                       className="w-100 py-3 d-flex flex-column align-items-center justify-content-center"
-                      style={{ backgroundColor: '#7d8471', borderColor: '#7d8471', minHeight: '100px' }}
+                      style={{ minHeight: '110px' }}
                       onClick={() => navigate('/connectors')}
                     >
                       <i className="bi bi-arrow-repeat fs-4 mb-2"></i>

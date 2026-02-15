@@ -84,6 +84,9 @@ export default function Routes() {
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingRoute, setEditingRoute] = useState<ApiRoute | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [methodFilter, setMethodFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [formData, setFormData] = useState<RouteFormData>({
     connector_id: '',
     name: '',
@@ -239,6 +242,31 @@ export default function Routes() {
     return connector?.name || 'Unknown';
   };
 
+  const getFilteredRoutes = () => {
+    let filtered = routes;
+
+    if (methodFilter !== 'all') {
+      filtered = filtered.filter(route => route.http_method === methodFilter);
+    }
+
+    if (statusFilter !== 'all') {
+      const isActive = statusFilter === 'active';
+      filtered = filtered.filter(route => route.is_active === isActive);
+    }
+
+    if (searchTerm.trim()) {
+      const query = searchTerm.toLowerCase();
+      filtered = filtered.filter(route =>
+        route.name.toLowerCase().includes(query) ||
+        route.path_pattern.toLowerCase().includes(query) ||
+        route.module_prefix.toLowerCase().includes(query) ||
+        getConnectorName(route.connector_id).toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  };
+
   const toggleRoleSelection = (role: string) => {
     const currentRoles = formData.allowed_roles;
     if (currentRoles.includes(role)) {
@@ -249,25 +277,21 @@ export default function Routes() {
   };
 
   return (
-    <Container className="mt-4">
-      <Row className="mb-4">
+    <Container className="page-container">
+      <Row className="page-section">
         <Col>
-          <div className="d-flex justify-content-between align-items-center">
+          <div className="page-header">
             <div>
-              <h1>
+              <h1 className="page-title type-h1">
                 <i className="bi bi-signpost-2 me-2"></i>
                 API Routes
               </h1>
-              <p className="text-muted">Configure routing rules and endpoint mappings</p>
+              <p className="page-subtitle type-subtitle">Configure routing rules and endpoint mappings</p>
             </div>
-            <Button
-              variant="primary"
-              onClick={() => handleShowModal()}
-              disabled={connectors.length === 0}
-            >
-              <i className="bi bi-plus-circle me-1"></i>
-              Add Route
-            </Button>
+            <div className="page-stats">
+              <span className="stat-chip">Total: {routes.length}</span>
+              <span className="stat-chip secondary">Filtered: {getFilteredRoutes().length}</span>
+            </div>
           </div>
         </Col>
       </Row>
@@ -285,18 +309,64 @@ export default function Routes() {
         </Alert>
       )}
 
-      <Row>
+  <Row className="page-section">
         <Col>
-          <Card>
-            <Card.Body>
+          <Card className="data-card">
+            <div className="action-bar">
+              <div className="filters">
+                <Form.Control
+                  size="sm"
+                  placeholder="Search routes or connectors"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <Form.Select
+                  size="sm"
+                  value={methodFilter}
+                  onChange={(e) => setMethodFilter(e.target.value)}
+                >
+                  <option value="all">All Methods</option>
+                  {HTTP_METHODS.map((method) => (
+                    <option key={method} value={method}>
+                      {method}
+                    </option>
+                  ))}
+                </Form.Select>
+                <Form.Select
+                  size="sm"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </Form.Select>
+              </div>
+              <div className="d-flex gap-2">
+                <Button variant="outline-secondary" size="sm" onClick={fetchData}>
+                  <i className="bi bi-arrow-repeat me-1"></i>
+                  Refresh
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => handleShowModal()}
+                  disabled={connectors.length === 0}
+                >
+                  <i className="bi bi-plus-circle me-1"></i>
+                  Add Route
+                </Button>
+              </div>
+            </div>
+            <Card.Body className="table-card-body">
               {loading ? (
-                <div className="text-center py-5">
+                <div className="empty-state">
                   <Spinner animation="border" role="status">
                     <span className="visually-hidden">Loading...</span>
                   </Spinner>
                 </div>
               ) : routes.length === 0 ? (
-                <div className="text-center py-5">
+                <div className="empty-state">
                   <i className="bi bi-inbox display-1 text-muted"></i>
                   <h5 className="mt-3 text-muted">No routes found</h5>
                   <p className="text-muted">Create your first API route to start routing requests</p>
@@ -307,8 +377,21 @@ export default function Routes() {
                     </Button>
                   )}
                 </div>
+              ) : getFilteredRoutes().length === 0 ? (
+                <div className="empty-state">
+                  <i className="bi bi-search display-1 text-muted"></i>
+                  <h5 className="mt-3 text-muted">No routes match</h5>
+                  <p className="text-muted">Try adjusting your search or filters.</p>
+                </div>
               ) : (
-                <Table responsive hover>
+                <>
+                  <div className="d-flex justify-content-between align-items-center px-4 pt-3 pb-2">
+                    <div className="text-muted small">
+                      Showing <strong>{getFilteredRoutes().length}</strong> routes
+                    </div>
+                  </div>
+                  <div className="table-responsive">
+                    <Table responsive hover className="data-table align-middle">
                   <thead>
                     <tr>
                       <th>Name</th>
@@ -322,7 +405,7 @@ export default function Routes() {
                     </tr>
                   </thead>
                   <tbody>
-                    {routes.map((route) => (
+                    {getFilteredRoutes().map((route) => (
                       <tr key={route.id}>
                         <td>
                           <strong>{route.name}</strong>
@@ -373,6 +456,8 @@ export default function Routes() {
                     ))}
                   </tbody>
                 </Table>
+                  </div>
+                </>
               )}
             </Card.Body>
           </Card>

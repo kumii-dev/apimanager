@@ -111,9 +111,10 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
-      {session && <Navigation />}
-      <Routes>
+    <div className="app-shell">
+      <BrowserRouter>
+        {session && <Navigation />}
+        <Routes>
         {/* Public Routes */}
         <Route 
           path="/login" 
@@ -165,8 +166,9 @@ function App() {
         {/* Default Route */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+    </div>
   );
 }
 

@@ -70,6 +70,7 @@ export default function Connectors() {
   const [showModal, setShowModal] = useState(false);
   const [editingConnector, setEditingConnector] = useState<Connector | null>(null);
   const [riskFilter, setRiskFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState<ConnectorFormData>({
     name: '',
     type: 'rest',
@@ -85,14 +86,24 @@ export default function Connectors() {
   }, []);
 
   const getFilteredConnectors = () => {
-    if (riskFilter === 'all') {
-      return connectors;
-    }
+    let filtered = connectors;
+
     if (riskFilter === 'ai-only') {
-      return connectors.filter(c => c.is_ai_system);
+      filtered = filtered.filter(c => c.is_ai_system);
+    } else if (riskFilter !== 'all') {
+      filtered = filtered.filter(c => c.ai_risk_level === riskFilter);
     }
-    // Filter by risk level (low, medium, high, critical)
-    return connectors.filter(c => c.ai_risk_level === riskFilter);
+
+    if (searchTerm.trim()) {
+      const query = searchTerm.toLowerCase();
+      filtered = filtered.filter(c =>
+        c.name.toLowerCase().includes(query) ||
+        c.base_url.toLowerCase().includes(query) ||
+        c.type.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
   };
 
   const fetchConnectors = async () => {
@@ -304,21 +315,21 @@ export default function Connectors() {
   };
 
   return (
-    <Container className="mt-4">
-      <Row className="mb-4">
+    <Container className="page-container">
+      <Row className="page-section">
         <Col>
-          <div className="d-flex justify-content-between align-items-center">
+          <div className="page-header">
             <div>
-              <h1>
+              <h1 className="page-title type-h1">
                 <i className="bi bi-plug me-2"></i>
                 API Connectors
               </h1>
-              <p className="text-muted">Manage external API connections and configurations</p>
+              <p className="page-subtitle type-subtitle">Manage external API connections and configurations</p>
             </div>
-            <Button variant="primary" onClick={() => handleShowModal()}>
-              <i className="bi bi-plus-circle me-1"></i>
-              Add Connector
-            </Button>
+            <div className="page-stats">
+              <span className="stat-chip">Total: {connectors.length}</span>
+              <span className="stat-chip secondary">Filtered: {getFilteredConnectors().length}</span>
+            </div>
           </div>
         </Col>
       </Row>
@@ -329,18 +340,50 @@ export default function Connectors() {
         </Alert>
       )}
 
-      <Row>
+  <Row className="page-section">
         <Col>
-          <Card>
-            <Card.Body>
+          <Card className="data-card">
+            <div className="action-bar">
+              <div className="filters">
+                <Form.Control
+                  size="sm"
+                  placeholder="Search connectors or URLs"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <Form.Select
+                  size="sm"
+                  value={riskFilter}
+                  onChange={(e) => setRiskFilter(e.target.value)}
+                >
+                  <option value="all">All Connectors</option>
+                  <option value="ai-only">AI Systems Only</option>
+                  <option value="low">Low Risk</option>
+                  <option value="medium">Medium Risk</option>
+                  <option value="high">High Risk</option>
+                  <option value="critical">Critical Risk</option>
+                </Form.Select>
+              </div>
+              <div className="d-flex gap-2">
+                <Button variant="outline-secondary" size="sm" onClick={fetchConnectors}>
+                  <i className="bi bi-arrow-repeat me-1"></i>
+                  Refresh
+                </Button>
+                <Button variant="primary" size="sm" onClick={() => handleShowModal()}>
+                  <i className="bi bi-plus-circle me-1"></i>
+                  Add Connector
+                </Button>
+              </div>
+            </div>
+            <Card.Body className="table-card-body">
               {loading ? (
-                <div className="text-center py-5">
+                <div className="empty-state">
                   <Spinner animation="border" role="status">
                     <span className="visually-hidden">Loading...</span>
                   </Spinner>
                 </div>
               ) : connectors.length === 0 ? (
-                <div className="text-center py-5">
+                <div className="empty-state">
                   <i className="bi bi-inbox display-1 text-muted"></i>
                   <h5 className="mt-3 text-muted">No connectors found</h5>
                   <p className="text-muted">Create your first API connector to get started</p>
@@ -349,27 +392,21 @@ export default function Connectors() {
                     Add Connector
                   </Button>
                 </div>
+              ) : getFilteredConnectors().length === 0 ? (
+                <div className="empty-state">
+                  <i className="bi bi-search display-1 text-muted"></i>
+                  <h5 className="mt-3 text-muted">No connectors match</h5>
+                  <p className="text-muted">Try adjusting your search or risk filter.</p>
+                </div>
               ) : (
                 <>
-                  <div className="d-flex justify-content-between align-items-center mb-3">
-                    <div>
-                      <strong>{getFilteredConnectors().length}</strong> connector{getFilteredConnectors().length !== 1 ? 's' : ''}
+                  <div className="d-flex justify-content-between align-items-center px-4 pt-3 pb-2">
+                    <div className="text-muted small">
+                      Showing <strong>{getFilteredConnectors().length}</strong> connector{getFilteredConnectors().length !== 1 ? 's' : ''}
                     </div>
-                    <Form.Select 
-                      style={{ width: 'auto' }}
-                      value={riskFilter}
-                      onChange={(e) => setRiskFilter(e.target.value)}
-                    >
-                      <option value="all">All Connectors</option>
-                      <option value="ai-only">AI Systems Only</option>
-                      <option value="low">Low Risk</option>
-                      <option value="medium">Medium Risk</option>
-                      <option value="high">High Risk</option>
-                      <option value="critical">Critical Risk</option>
-                    </Form.Select>
                   </div>
-                  
-                <Table responsive hover>
+                  <div className="table-responsive">
+                    <Table responsive hover className="data-table align-middle">
                   <thead>
                     <tr>
                       <th>Name</th>
@@ -432,6 +469,7 @@ export default function Connectors() {
                     ))}
                   </tbody>
                 </Table>
+                  </div>
                 </>
               )}
             </Card.Body>
