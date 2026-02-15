@@ -69,3 +69,4 @@ tsconfig.tsbuildinfo
 # Misc
 .turbo
 .contentlayer
+vercel-env-values.sh
