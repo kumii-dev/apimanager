@@ -22,14 +22,27 @@ export default async (req: VercelRequest, res: VercelResponse) => {
   try {
     const expressApp = await getApp();
     
-    // Vercel serverless functions don't support app.listen()
-    // Just pass the request to Express
-    return expressApp(req, res);
+    // Strip /api prefix from the path for Express routing
+    // Vercel rewrites /api/:path* to /api, but passes full path in req.url
+    // Express app expects paths without /api prefix (/admin/connectors, not /api/admin/connectors)
+    if (req.url && req.url.startsWith('/api/')) {
+      req.url = req.url.substring(4); // Remove '/api' prefix, keep the slash
+    } else if (req.url === '/api') {
+      req.url = '/'; // Root API call
+    }
+    
+    // Express apps can be called as middleware functions: app(req, res, next)
+    expressApp(req as any, res as any);
   } catch (error) {
-    console.error('Error handling request:', error);
-    res.status(500).json({
-      error: 'Internal server error',
-      message: String(error)
-    });
+    console.error('[Vercel] Error handling request:', error);
+    
+    // Only send response if headers haven't been sent yet
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : String(error),
+        stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
+      });
+    }
   }
 };
