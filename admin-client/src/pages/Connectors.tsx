@@ -114,7 +114,12 @@ export default function Connectors() {
       // Get auth token
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        setError('Not authenticated');
+        const missingEnvVars = !import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY;
+        if (missingEnvVars) {
+          setError('Configuration Error: Supabase environment variables not set. Check browser console for instructions.');
+        } else {
+          setError('Not authenticated. Please log in.');
+        }
         return;
       }
       
