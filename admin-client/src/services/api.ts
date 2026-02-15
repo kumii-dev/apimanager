@@ -7,7 +7,26 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { supabase } from './supabase';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+// Smart API URL detection:
+// - In Vercel production: use relative /api path (same domain)
+// - In development: use localhost:3000
+// - Allow override via VITE_API_BASE_URL
+const getApiBaseUrl = () => {
+  // If explicitly set, use it
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  
+  // In production (Vercel), use relative path
+  if (import.meta.env.PROD) {
+    return '/api';
+  }
+  
+  // In development, use localhost
+  return 'http://localhost:3000';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 /**
  * Create axios instance with defaults
