@@ -41,6 +41,24 @@ interface AuditLogFilters {
   pageSize: number;
 }
 
+interface AuditInsights {
+  audit_summary: string;
+  iso_controls: { control: string; label: string; count: number }[];
+  recommendations: string[];
+  generated_at: string;
+  source: 'openai' | 'heuristic';
+  recent_trail: {
+    id: string;
+    action: string;
+    resource_type: string;
+    severity: string;
+    status: string;
+    created_at: string;
+    iso_control: string;
+    iso_label: string;
+  }[];
+}
+
 const SEVERITY_LEVELS = ['debug', 'info', 'warn', 'error', 'critical'];
 const STATUS_VALUES = ['success', 'failure', 'pending'];
 const RESOURCE_TYPES = [
@@ -65,9 +83,13 @@ export default function AuditLogs() {
     page: 1,
     pageSize: 50,
   });
+  const [insights, setInsights] = useState<AuditInsights | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(true);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchLogs();
+    fetchInsights();
   }, [filters.page, filters.pageSize]);
 
   const fetchLogs = async () => {
@@ -94,6 +116,24 @@ export default function AuditLogs() {
       console.error('Error fetching audit logs:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchInsights = async () => {
+    try {
+      setInsightsLoading(true);
+      setInsightsError(null);
+      const response = await auditLogsApi.insights();
+      if (response.data.success) {
+        setInsights(response.data.data);
+      } else {
+        throw new Error(response.data.error || 'Failed to fetch audit insights');
+      }
+    } catch (err: any) {
+      console.error('Error fetching audit insights:', err);
+      setInsightsError(err.response?.data?.message || err.message || 'Failed to load audit insights');
+    } finally {
+      setInsightsLoading(false);
     }
   };
 
@@ -242,6 +282,77 @@ export default function AuditLogs() {
               </span>
             </div>
           </div>
+        </Col>
+      </Row>
+
+      <Row className="page-section">
+        <Col>
+          <Card className="chart-card">
+            <Card.Body>
+              <div className="chart-header">
+                <div>
+                  <div className="chart-title">ISO 27001 Audit Trail & AI Recommendations</div>
+                  <div className="chart-subtitle">Automated compliance summary and next steps</div>
+                </div>
+                <Button variant="outline-secondary" size="sm" onClick={fetchInsights}>
+                  Refresh
+                </Button>
+              </div>
+
+              {insightsLoading && (
+                <div className="text-center py-4">
+                  <Spinner animation="border" variant="primary" size="sm" />
+                </div>
+              )}
+
+              {insightsError && !insightsLoading && (
+                <Alert variant="danger" className="mt-3">
+                  {insightsError}
+                </Alert>
+              )}
+
+              {!insightsLoading && !insightsError && insights && (
+                <Row className="mt-3">
+                  <Col lg={6}>
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <div className="fw-semibold">Audit Summary</div>
+                      <Badge bg={insights.source === 'openai' ? 'primary' : 'secondary'}>
+                        {insights.source === 'openai' ? 'AI' : 'Heuristic'}
+                      </Badge>
+                    </div>
+                    <p className="text-muted">{insights.audit_summary}</p>
+                    <div className="fw-semibold mb-2">AI Recommendations</div>
+                    <ul className="text-muted">
+                      {insights.recommendations.map((rec, idx) => (
+                        <li key={idx}>{rec}</li>
+                      ))}
+                    </ul>
+                  </Col>
+                  <Col lg={6}>
+                    <div className="fw-semibold mb-2">ISO 27001 Controls Coverage</div>
+                    {insights.iso_controls.map((control) => (
+                      <div key={control.control} className="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                          <span className="fw-semibold">{control.control}</span>
+                          <span className="text-muted ms-2">{control.label}</span>
+                        </div>
+                        <Badge bg="info">{control.count}</Badge>
+                      </div>
+                    ))}
+                    <div className="fw-semibold mt-3 mb-2">Recent ISO Audit Trail</div>
+                    <div className="small text-muted">
+                      {insights.recent_trail.map((entry) => (
+                        <div key={entry.id} className="d-flex justify-content-between border-bottom py-1">
+                          <span>{formatAction(entry.action)}</span>
+                          <span>{entry.iso_control}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </Col>
+                </Row>
+              )}
+            </Card.Body>
+          </Card>
         </Col>
       </Row>
 

@@ -127,6 +127,7 @@ export const routesApi = {
 // Audit Logs
 export const auditLogsApi = {
   list: (params?: any) => apiClient.get('/admin/audit-logs', { params }),
+  insights: () => apiClient.get('/admin/audit-logs/insights'),
 };
 
 // Metrics
