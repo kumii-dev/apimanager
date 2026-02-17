@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Nav, Tab, Alert, Spinner, Badge } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Nav, Tab, Alert, Spinner, Badge, ProgressBar } from 'react-bootstrap';
 import { supabase } from '../services/supabase';
 import { auditLogsApi } from '../services/api';
 import { useNavigate } from 'react-router-dom';
@@ -23,6 +23,9 @@ export default function Dashboard() {
   const [auditError, setAuditError] = useState<string | null>(null);
   const [auditTotal, setAuditTotal] = useState(0);
   const [auditCritical, setAuditCritical] = useState(0);
+  const [auditSuccessRate, setAuditSuccessRate] = useState(0);
+  const [auditVolumeBars, setAuditVolumeBars] = useState<number[]>([]);
+  const [severityBars, setSeverityBars] = useState<number[]>([]);
 
   useEffect(() => {
     const getUser = async () => {
@@ -39,13 +42,38 @@ export default function Dashboard() {
         setAuditLoading(true);
         setAuditError(null);
 
-        const response = await auditLogsApi.list({ page: 1, pageSize: 5 });
+        const response = await auditLogsApi.list({ page: 1, pageSize: 120 });
         const logs = response.data.logs || [];
         setAuditLogs(logs);
         setAuditTotal(response.data.total || logs.length || 0);
 
         const criticalCount = logs.filter((log: AuditLog) => log.severity === 'critical').length;
         setAuditCritical(criticalCount);
+
+        const successCount = logs.filter((log: AuditLog) => log.status === 'success').length;
+        const totalCount = logs.length || 1;
+        setAuditSuccessRate(Math.round((successCount / totalCount) * 100));
+
+        const byDay: Record<string, number> = {};
+        logs.forEach((log: AuditLog) => {
+          const day = new Date(log.created_at).toLocaleDateString();
+          byDay[day] = (byDay[day] || 0) + 1;
+        });
+        const volumeData = Object.values(byDay).slice(-7);
+        const maxVolume = Math.max(...volumeData, 1);
+        setAuditVolumeBars(volumeData.map((value) => Math.round((value / maxVolume) * 100)));
+
+        const severityCounts = {
+          critical: logs.filter((log: AuditLog) => log.severity === 'critical').length,
+          error: logs.filter((log: AuditLog) => log.severity === 'error').length,
+          warn: logs.filter((log: AuditLog) => log.severity === 'warn').length,
+          info: logs.filter((log: AuditLog) => log.severity === 'info').length,
+          debug: logs.filter((log: AuditLog) => log.severity === 'debug').length,
+        };
+        const severityMax = Math.max(...Object.values(severityCounts), 1);
+        setSeverityBars(
+          Object.values(severityCounts).map((value) => Math.round((value / severityMax) * 100))
+        );
       } catch (err: any) {
         setAuditError(err.response?.data?.message || 'Failed to fetch audit logs');
       } finally {
@@ -68,8 +96,8 @@ export default function Dashboard() {
     );
   }
 
-  const requestBars = [35, 60, 45, 80, 55, 70, 62];
-  const latencyBars = [25, 40, 30, 52, 38, 46, 34];
+  const requestBars = auditVolumeBars.length ? auditVolumeBars : [35, 60, 45, 80, 55, 70, 62];
+  const latencyBars = severityBars.length ? severityBars : [25, 40, 30, 52, 38, 46, 34];
 
   return (
     <Container fluid className="page-container px-4">
@@ -214,7 +242,7 @@ export default function Dashboard() {
                         <div className="chart-title">Request Volume</div>
                         <div className="chart-subtitle">Last 7 days</div>
                       </div>
-                      <div className="chart-metric">0 req</div>
+                      <div className="chart-metric">{auditTotal} events</div>
                     </div>
                     <div className="mini-chart">
                       {requestBars.map((height, index) => (
@@ -229,10 +257,10 @@ export default function Dashboard() {
                   <Card.Body>
                     <div className="chart-header">
                       <div>
-                        <div className="chart-title">Latency Overview</div>
-                        <div className="chart-subtitle">Average response time</div>
+                        <div className="chart-title">Severity Mix</div>
+                        <div className="chart-subtitle">Critical → Debug distribution</div>
                       </div>
-                      <div className="chart-metric">0 ms</div>
+                      <div className="chart-metric">{auditSuccessRate}% success</div>
                     </div>
                     <div className="mini-chart">
                       {latencyBars.map((height, index) => (
@@ -245,13 +273,13 @@ export default function Dashboard() {
             </Row>
 
             <Row className="page-section">
-              <Col lg={12}>
-                <Card className="chart-card">
+              <Col lg={7}>
+                <Card className="chart-card h-100">
                   <Card.Body>
                     <div className="chart-header">
                       <div>
-                        <div className="chart-title">Recent Audit Activity</div>
-                        <div className="chart-subtitle">Latest security and governance events</div>
+                        <div className="chart-title">Audit Health Score</div>
+                        <div className="chart-subtitle">Success vs. failure rate</div>
                       </div>
                       <Button variant="outline-secondary" size="sm" onClick={() => navigate('/audit-logs')}>
                         View all logs
@@ -270,30 +298,72 @@ export default function Dashboard() {
                       </Alert>
                     )}
 
-                    {!auditLoading && !auditError && auditLogs.length === 0 && (
-                      <div className="text-muted mt-3">No audit activity yet.</div>
-                    )}
-
-                    {!auditLoading && !auditError && auditLogs.length > 0 && (
+                    {!auditLoading && !auditError && (
                       <div className="mt-3">
-                        {auditLogs.map((log) => (
-                          <div key={log.id} className="d-flex justify-content-between align-items-center border-bottom py-2">
-                            <div>
-                              <div className="fw-semibold">{log.action}</div>
-                              <div className="text-muted small">
-                                {log.resource_type} • {new Date(log.created_at).toLocaleString()}
-                              </div>
-                            </div>
-                            <div className="d-flex gap-2">
-                              <Badge bg={log.status === 'success' ? 'success' : log.status === 'failure' ? 'danger' : 'warning'}>
-                                {log.status}
-                              </Badge>
-                              <Badge bg={log.severity === 'critical' ? 'dark' : log.severity === 'error' ? 'danger' : log.severity === 'warn' ? 'warning' : 'info'}>
-                                {log.severity}
-                              </Badge>
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <div className="fw-semibold">Overall Success Rate</div>
+                          <Badge bg={auditSuccessRate >= 90 ? 'success' : auditSuccessRate >= 75 ? 'warning' : 'danger'}>
+                            {auditSuccessRate}%
+                          </Badge>
+                        </div>
+                        <ProgressBar
+                          now={auditSuccessRate}
+                          variant={auditSuccessRate >= 90 ? 'success' : auditSuccessRate >= 75 ? 'warning' : 'danger'}
+                          className="mb-4"
+                        />
+
+                        <div className="d-flex justify-content-between">
+                          <div>
+                            <div className="text-muted small">Critical Alerts</div>
+                            <div className="fw-semibold">{auditCritical}</div>
+                          </div>
+                          <div>
+                            <div className="text-muted small">Last 7 Days</div>
+                            <div className="fw-semibold">{auditTotal}</div>
+                          </div>
+                          <div>
+                            <div className="text-muted small">Latest Activity</div>
+                            <div className="fw-semibold">
+                              {auditLogs[0]?.action ? auditLogs[0].action.split('.').pop() : '—'}
                             </div>
                           </div>
+                        </div>
+                      </div>
+                    )}
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col lg={5}>
+                <Card className="chart-card h-100">
+                  <Card.Body>
+                    <div className="chart-header">
+                      <div>
+                        <div className="chart-title">Severity Breakdown</div>
+                        <div className="chart-subtitle">Critical → Debug</div>
+                      </div>
+                    </div>
+
+                    {auditLoading && (
+                      <div className="text-center py-4">
+                        <Spinner animation="border" variant="primary" size="sm" />
+                      </div>
+                    )}
+
+                    {!auditLoading && !auditError && (
+                      <div className="mini-chart mt-3">
+                        {(severityBars.length ? severityBars : [20, 40, 55, 70, 30]).map((height, index) => (
+                          <span key={index} style={{ height: `${height}%` }} />
                         ))}
+                      </div>
+                    )}
+
+                    {!auditLoading && !auditError && (
+                      <div className="d-flex justify-content-between text-muted small mt-3">
+                        <span>Critical</span>
+                        <span>Error</span>
+                        <span>Warn</span>
+                        <span>Info</span>
+                        <span>Debug</span>
                       </div>
                     )}
                   </Card.Body>
