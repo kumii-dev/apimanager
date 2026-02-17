@@ -1,13 +1,28 @@
 import { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Nav, Tab } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Nav, Tab, Alert, Spinner, Badge } from 'react-bootstrap';
 import { supabase } from '../services/supabase';
+import { auditLogsApi } from '../services/api';
 import { useNavigate } from 'react-router-dom';
+
+interface AuditLog {
+  id: string;
+  action: string;
+  resource_type: string;
+  status: 'success' | 'failure' | 'pending';
+  severity: 'debug' | 'info' | 'warn' | 'error' | 'critical';
+  created_at: string;
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [auditLoading, setAuditLoading] = useState(true);
+  const [auditError, setAuditError] = useState<string | null>(null);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [auditCritical, setAuditCritical] = useState(0);
 
   useEffect(() => {
     const getUser = async () => {
@@ -16,6 +31,29 @@ export default function Dashboard() {
       setLoading(false);
     };
     getUser();
+  }, []);
+
+  useEffect(() => {
+    const fetchAuditSummary = async () => {
+      try {
+        setAuditLoading(true);
+        setAuditError(null);
+
+        const response = await auditLogsApi.list({ page: 1, pageSize: 5 });
+        const logs = response.data.logs || [];
+        setAuditLogs(logs);
+        setAuditTotal(response.data.total || logs.length || 0);
+
+        const criticalCount = logs.filter((log: AuditLog) => log.severity === 'critical').length;
+        setAuditCritical(criticalCount);
+      } catch (err: any) {
+        setAuditError(err.response?.data?.message || 'Failed to fetch audit logs');
+      } finally {
+        setAuditLoading(false);
+      }
+    };
+
+    fetchAuditSummary();
   }, []);
 
   if (loading) {
@@ -135,7 +173,7 @@ export default function Dashboard() {
                     <div className="d-flex justify-content-between">
                       <div>
                         <div className="kpi-label">Requests (7d)</div>
-                        <div className="kpi-value">0</div>
+                        <div className="kpi-value">{auditTotal}</div>
                         <div className="kpi-meta">Rolling volume</div>
                       </div>
                       <div className="kpi-icon">
@@ -151,8 +189,12 @@ export default function Dashboard() {
                     <div className="d-flex justify-content-between">
                       <div>
                         <div className="kpi-label">System Health</div>
-                        <div className="kpi-value text-success">Healthy</div>
-                        <div className="kpi-meta">All services stable</div>
+                        <div className={`kpi-value ${auditCritical > 0 ? 'text-danger' : 'text-success'}`}>
+                          {auditCritical > 0 ? 'At Risk' : 'Healthy'}
+                        </div>
+                        <div className="kpi-meta">
+                          {auditCritical > 0 ? `${auditCritical} critical alerts` : 'All services stable'}
+                        </div>
                       </div>
                       <div className="kpi-icon">
                         <i className="bi bi-activity"></i>
@@ -197,6 +239,63 @@ export default function Dashboard() {
                         <span key={index} style={{ height: `${height}%` }} />
                       ))}
                     </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
+
+            <Row className="page-section">
+              <Col lg={12}>
+                <Card className="chart-card">
+                  <Card.Body>
+                    <div className="chart-header">
+                      <div>
+                        <div className="chart-title">Recent Audit Activity</div>
+                        <div className="chart-subtitle">Latest security and governance events</div>
+                      </div>
+                      <Button variant="outline-secondary" size="sm" onClick={() => navigate('/audit-logs')}>
+                        View all logs
+                      </Button>
+                    </div>
+
+                    {auditLoading && (
+                      <div className="text-center py-4">
+                        <Spinner animation="border" variant="primary" size="sm" />
+                      </div>
+                    )}
+
+                    {auditError && !auditLoading && (
+                      <Alert variant="danger" className="mt-3">
+                        {auditError}
+                      </Alert>
+                    )}
+
+                    {!auditLoading && !auditError && auditLogs.length === 0 && (
+                      <div className="text-muted mt-3">No audit activity yet.</div>
+                    )}
+
+                    {!auditLoading && !auditError && auditLogs.length > 0 && (
+                      <div className="mt-3">
+                        {auditLogs.map((log) => (
+                          <div key={log.id} className="d-flex justify-content-between align-items-center border-bottom py-2">
+                            <div>
+                              <div className="fw-semibold">{log.action}</div>
+                              <div className="text-muted small">
+                                {log.resource_type} • {new Date(log.created_at).toLocaleString()}
+                              </div>
+                            </div>
+                            <div className="d-flex gap-2">
+                              <Badge bg={log.status === 'success' ? 'success' : log.status === 'failure' ? 'danger' : 'warning'}>
+                                {log.status}
+                              </Badge>
+                              <Badge bg={log.severity === 'critical' ? 'dark' : log.severity === 'error' ? 'danger' : log.severity === 'warn' ? 'warning' : 'info'}>
+                                {log.severity}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </Card.Body>
                 </Card>
               </Col>
