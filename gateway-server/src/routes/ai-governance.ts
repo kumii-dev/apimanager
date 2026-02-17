@@ -5,6 +5,7 @@
 
 import { Router, Request, Response } from 'express';
 import { authMiddleware } from '../middleware/auth';
+import { config } from '../config';
 import { createClient } from '@supabase/supabase-js';
 import type {
   CreateMetricRequest,
@@ -155,6 +156,106 @@ router.get('/dashboard', async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to fetch dashboard data',
+    });
+  }
+});
+
+// ============================================================================
+// AI Governance Insights (tracking support)
+// ============================================================================
+
+router.get('/insights', async (req: Request, res: Response) => {
+  try {
+    const supabase = getSupabaseClient();
+    const tenantId = req.user?.tenantId;
+
+    const { data: recentMetrics, error: metricsError } = await supabase
+      .from('ai_monitoring_metrics')
+      .select('metric_type, metric_value, is_within_threshold, measured_at')
+      .eq('tenant_id', tenantId)
+      .order('measured_at', { ascending: false })
+      .limit(20);
+
+    if (metricsError) throw metricsError;
+
+    const { data: recentIncidents, error: incidentsError } = await supabase
+      .from('ai_incidents')
+      .select('title, severity, status, detected_at')
+      .eq('tenant_id', tenantId)
+      .order('detected_at', { ascending: false })
+      .limit(10);
+
+    if (incidentsError) throw incidentsError;
+
+    const metrics = recentMetrics || [];
+    const incidents = recentIncidents || [];
+
+    const belowThreshold = metrics.filter(m => !m.is_within_threshold).length;
+    const criticalIncidents = incidents.filter(i => i.severity === 'critical').length;
+    const openIncidents = incidents.filter(i => i.status === 'open' || i.status === 'investigating').length;
+
+    const fallbackSummary = {
+      tracking_summary: `Tracking ${metrics.length} recent metrics and ${incidents.length} incidents. ${belowThreshold} metrics are outside thresholds with ${openIncidents} open incidents (${criticalIncidents} critical).`,
+      risk_highlights: [
+        belowThreshold > 0 ? `${belowThreshold} metrics outside threshold` : 'All metrics within threshold',
+        openIncidents > 0 ? `${openIncidents} active incidents` : 'No active incidents',
+        criticalIncidents > 0 ? `${criticalIncidents} critical incidents` : 'No critical incidents',
+      ],
+      generated_at: new Date().toISOString(),
+      source: 'heuristic',
+    };
+
+    if (!config.ai.openaiApiKey) {
+      return res.json({ success: true, data: fallbackSummary });
+    }
+
+    const prompt = `You are an AI governance analyst. Summarize the current monitoring state and provide concise risk highlights.\n\nRecent Metrics: ${JSON.stringify(metrics)}\nRecent Incidents: ${JSON.stringify(incidents)}`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.ai.openaiApiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'Return a JSON object with fields: tracking_summary (string) and risk_highlights (array of strings).' },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.2,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn('OpenAI insights request failed:', await response.text());
+      return res.json({ success: true, data: fallbackSummary });
+    }
+
+    const data: any = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+    let parsed: any = null;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      parsed = null;
+    }
+
+    const insights = parsed && parsed.tracking_summary
+      ? {
+          tracking_summary: parsed.tracking_summary,
+          risk_highlights: Array.isArray(parsed.risk_highlights) ? parsed.risk_highlights : fallbackSummary.risk_highlights,
+          generated_at: new Date().toISOString(),
+          source: 'openai',
+        }
+      : fallbackSummary;
+
+    return res.json({ success: true, data: insights });
+  } catch (error: any) {
+    console.error('Insights error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to generate insights',
     });
   }
 });

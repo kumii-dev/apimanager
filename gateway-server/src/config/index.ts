@@ -68,6 +68,9 @@ const envSchema = z.object({
   // Monitoring
   METRICS_ENABLED: z.string().default('true').transform(val => val === 'true'),
 
+  // AI Services (optional)
+  OPENAI_API_KEY: z.string().optional(),
+
   // Development mode
   DEV_MODE: z.string().default('false').transform(val => val === 'true'),
   DEV_BYPASS_AUTH: z.string().default('false').transform(val => val === 'true'),
@@ -113,6 +116,11 @@ export const config = {
   crypto: {
     masterKey: env.KMS_MASTER_KEY,
     algorithm: 'aes-256-gcm' as const,
+  },
+
+  // AI services
+  ai: {
+    openaiApiKey: env.OPENAI_API_KEY,
   },
 
   // Redis

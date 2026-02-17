@@ -51,15 +51,26 @@ interface RecentAssessment {
   assessment_date: string;
 }
 
+interface GovernanceInsights {
+  tracking_summary: string;
+  risk_highlights: string[];
+  generated_at: string;
+  source: 'openai' | 'heuristic';
+}
+
 const AIGovernance: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<GovernanceDashboardStats | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [insights, setInsights] = useState<GovernanceInsights | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(true);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDashboardData();
+    fetchInsights();
   }, []);
 
   const fetchDashboardData = async () => {
@@ -77,6 +88,24 @@ const AIGovernance: React.FC = () => {
       setError(err.response?.data?.error || err.message || 'Failed to load dashboard');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchInsights = async () => {
+    try {
+      setInsightsLoading(true);
+      setInsightsError(null);
+      const response = await apiClient.get('/admin/governance/insights');
+      if (response.data.success) {
+        setInsights(response.data.data);
+      } else {
+        throw new Error(response.data.error || 'Failed to fetch insights');
+      }
+    } catch (err: any) {
+      console.error('Insights fetch error:', err);
+      setInsightsError(err.response?.data?.error || err.message || 'Failed to load insights');
+    } finally {
+      setInsightsLoading(false);
     }
   };
 
@@ -178,6 +207,53 @@ const AIGovernance: React.FC = () => {
   <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k || 'overview')} className="page-section">
         {/* OVERVIEW TAB */}
         <Tab eventKey="overview" title="📈 Overview">
+          <Row className="page-section">
+            <Col lg={12}>
+              <Card className="chart-card">
+                <Card.Body>
+                  <div className="chart-header">
+                    <div>
+                      <div className="chart-title">AI Governance Tracking</div>
+                      <div className="chart-subtitle">Automated risk summary and highlights</div>
+                    </div>
+                    <Button variant="outline-secondary" size="sm" onClick={fetchInsights}>
+                      Refresh
+                    </Button>
+                  </div>
+
+                  {insightsLoading && (
+                    <div className="text-center py-4">
+                      <Spinner animation="border" variant="primary" size="sm" />
+                    </div>
+                  )}
+
+                  {insightsError && !insightsLoading && (
+                    <Alert variant="danger" className="mt-3">
+                      {insightsError}
+                    </Alert>
+                  )}
+
+                  {!insightsLoading && !insightsError && insights && (
+                    <div className="mt-3">
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <div className="fw-semibold">Tracking Summary</div>
+                        <Badge bg={insights.source === 'openai' ? 'primary' : 'secondary'}>
+                          {insights.source === 'openai' ? 'AI' : 'Heuristic'}
+                        </Badge>
+                      </div>
+                      <p className="text-muted mb-3">{insights.tracking_summary}</p>
+                      <div className="fw-semibold mb-2">Risk Highlights</div>
+                      <ul className="mb-0">
+                        {insights.risk_highlights.map((highlight, idx) => (
+                          <li key={idx} className="text-muted">{highlight}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
           {/* Key Metrics Row */}
           <Row className="page-section">
             <Col md={3}>
