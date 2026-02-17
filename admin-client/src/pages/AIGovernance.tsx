@@ -54,6 +54,9 @@ interface RecentAssessment {
 interface GovernanceInsights {
   tracking_summary: string;
   risk_highlights: string[];
+  recommendations: string[];
+  trend_metrics: { label: string; value: number }[];
+  incident_trend: { label: string; value: number }[];
   generated_at: string;
   source: 'openai' | 'heuristic';
 }
@@ -183,6 +186,13 @@ const AIGovernance: React.FC = () => {
     );
   }
 
+  const trendMax = insights?.trend_metrics.length
+    ? Math.max(...insights.trend_metrics.map((point) => point.value), 1)
+    : 1;
+  const incidentTrendMax = insights?.incident_trend.length
+    ? Math.max(...insights.incident_trend.map((point) => point.value), 1)
+    : 1;
+
   return (
     <Container fluid className="page-container px-4">
       {/* Header */}
@@ -248,7 +258,77 @@ const AIGovernance: React.FC = () => {
                           <li key={idx} className="text-muted">{highlight}</li>
                         ))}
                       </ul>
+                      <div className="fw-semibold mb-2">Actionable Recommendations</div>
+                      <ul className="mb-0">
+                        {insights.recommendations.map((rec, idx) => (
+                          <li key={idx} className="text-muted">{rec}</li>
+                        ))}
+                      </ul>
                     </div>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+          <Row className="page-section">
+            <Col md={6}>
+              <Card className="chart-card h-100">
+                <Card.Body>
+                  <div className="chart-header">
+                    <div>
+                      <div className="chart-title">Monitoring Trend</div>
+                      <div className="chart-subtitle">Metrics logged (last 7 days)</div>
+                    </div>
+                  </div>
+                  {insightsLoading && (
+                    <div className="text-center py-4">
+                      <Spinner animation="border" variant="primary" size="sm" />
+                    </div>
+                  )}
+                  {!insightsLoading && !insightsError && insights && (
+                    <>
+                      <div className="mini-chart mt-3">
+                        {insights.trend_metrics.map((point, idx) => (
+                          <span key={idx} style={{ height: `${Math.round((point.value / trendMax) * 100)}%` }} />
+                        ))}
+                      </div>
+                      <div className="d-flex justify-content-between text-muted small mt-3">
+                        {insights.trend_metrics.map((point, idx) => (
+                          <span key={idx}>{point.label}</span>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md={6}>
+              <Card className="chart-card h-100">
+                <Card.Body>
+                  <div className="chart-header">
+                    <div>
+                      <div className="chart-title">Incident Trend</div>
+                      <div className="chart-subtitle">Incidents logged (last 7 days)</div>
+                    </div>
+                  </div>
+                  {insightsLoading && (
+                    <div className="text-center py-4">
+                      <Spinner animation="border" variant="primary" size="sm" />
+                    </div>
+                  )}
+                  {!insightsLoading && !insightsError && insights && (
+                    <>
+                      <div className="mini-chart mt-3">
+                        {insights.incident_trend.map((point, idx) => (
+                          <span key={idx} style={{ height: `${Math.round((point.value / incidentTrendMax) * 100)}%` }} />
+                        ))}
+                      </div>
+                      <div className="d-flex justify-content-between text-muted small mt-3">
+                        {insights.incident_trend.map((point, idx) => (
+                          <span key={idx}>{point.label}</span>
+                        ))}
+                      </div>
+                    </>
                   )}
                 </Card.Body>
               </Card>

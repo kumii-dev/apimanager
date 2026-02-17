@@ -194,6 +194,43 @@ router.get('/insights', async (req: Request, res: Response) => {
     const criticalIncidents = incidents.filter(i => i.severity === 'critical').length;
     const openIncidents = incidents.filter(i => i.status === 'open' || i.status === 'investigating').length;
 
+    const today = new Date();
+    const days = Array.from({ length: 7 }, (_, idx) => {
+      const date = new Date(today);
+      date.setDate(today.getDate() - (6 - idx));
+      return date;
+    });
+
+    const trendMetrics = days.map((date) => {
+      const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const value = metrics.filter(m => {
+        const measured = new Date(m.measured_at);
+        return measured.toDateString() === date.toDateString();
+      }).length;
+      return { label, value };
+    });
+
+    const incidentTrend = days.map((date) => {
+      const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const value = incidents.filter(i => {
+        const detected = new Date(i.detected_at);
+        return detected.toDateString() === date.toDateString();
+      }).length;
+      return { label, value };
+    });
+
+    const recommendations = [
+      belowThreshold > 0
+        ? `Review ${belowThreshold} metrics outside threshold and adjust monitoring baselines.`
+        : 'Maintain current monitoring baselines and continue regular reviews.',
+      openIncidents > 0
+        ? `Prioritize remediation for ${openIncidents} open incidents and validate fixes.`
+        : 'No open incidents—schedule proactive controls testing this week.',
+      criticalIncidents > 0
+        ? `Escalate ${criticalIncidents} critical incidents to governance leadership.`
+        : 'No critical incidents—focus on preventive fairness checks.',
+    ];
+
     const fallbackSummary = {
       tracking_summary: `Tracking ${metrics.length} recent metrics and ${incidents.length} incidents. ${belowThreshold} metrics are outside thresholds with ${openIncidents} open incidents (${criticalIncidents} critical).`,
       risk_highlights: [
@@ -201,6 +238,9 @@ router.get('/insights', async (req: Request, res: Response) => {
         openIncidents > 0 ? `${openIncidents} active incidents` : 'No active incidents',
         criticalIncidents > 0 ? `${criticalIncidents} critical incidents` : 'No critical incidents',
       ],
+      recommendations,
+      trend_metrics: trendMetrics,
+      incident_trend: incidentTrend,
       generated_at: new Date().toISOString(),
       source: 'heuristic',
     };
@@ -209,7 +249,7 @@ router.get('/insights', async (req: Request, res: Response) => {
       return res.json({ success: true, data: fallbackSummary });
     }
 
-    const prompt = `You are an AI governance analyst. Summarize the current monitoring state and provide concise risk highlights.\n\nRecent Metrics: ${JSON.stringify(metrics)}\nRecent Incidents: ${JSON.stringify(incidents)}`;
+  const prompt = `You are an AI governance analyst. Summarize the current monitoring state and provide concise risk highlights and actionable recommendations.\n\nRecent Metrics: ${JSON.stringify(metrics)}\nRecent Incidents: ${JSON.stringify(incidents)}`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -220,7 +260,7 @@ router.get('/insights', async (req: Request, res: Response) => {
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: 'Return a JSON object with fields: tracking_summary (string) and risk_highlights (array of strings).' },
+          { role: 'system', content: 'Return a JSON object with fields: tracking_summary (string), risk_highlights (array of strings), and recommendations (array of strings).' },
           { role: 'user', content: prompt },
         ],
         temperature: 0.2,
@@ -245,6 +285,9 @@ router.get('/insights', async (req: Request, res: Response) => {
       ? {
           tracking_summary: parsed.tracking_summary,
           risk_highlights: Array.isArray(parsed.risk_highlights) ? parsed.risk_highlights : fallbackSummary.risk_highlights,
+          recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : fallbackSummary.recommendations,
+          trend_metrics: trendMetrics,
+          incident_trend: incidentTrend,
           generated_at: new Date().toISOString(),
           source: 'openai',
         }
