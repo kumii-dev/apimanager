@@ -219,6 +219,21 @@ router.get('/insights', async (req: Request, res: Response) => {
       return { label, value };
     });
 
+    const severityTrend = days.map((date) => {
+      const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const sameDay = incidents.filter(i => {
+        const detected = new Date(i.detected_at);
+        return detected.toDateString() === date.toDateString();
+      });
+      return {
+        label,
+        critical: sameDay.filter(i => i.severity === 'critical').length,
+        high: sameDay.filter(i => i.severity === 'high').length,
+        medium: sameDay.filter(i => i.severity === 'medium').length,
+        low: sameDay.filter(i => i.severity === 'low').length,
+      };
+    });
+
     const recommendations = [
       belowThreshold > 0
         ? `Review ${belowThreshold} metrics outside threshold and adjust monitoring baselines.`
@@ -241,6 +256,7 @@ router.get('/insights', async (req: Request, res: Response) => {
       recommendations,
       trend_metrics: trendMetrics,
       incident_trend: incidentTrend,
+      severity_trend: severityTrend,
       generated_at: new Date().toISOString(),
       source: 'heuristic',
     };
@@ -288,6 +304,7 @@ router.get('/insights', async (req: Request, res: Response) => {
           recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : fallbackSummary.recommendations,
           trend_metrics: trendMetrics,
           incident_trend: incidentTrend,
+          severity_trend: severityTrend,
           generated_at: new Date().toISOString(),
           source: 'openai',
         }

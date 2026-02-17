@@ -57,6 +57,7 @@ interface GovernanceInsights {
   recommendations: string[];
   trend_metrics: { label: string; value: number }[];
   incident_trend: { label: string; value: number }[];
+  severity_trend: { label: string; critical: number; high: number; medium: number; low: number }[];
   generated_at: string;
   source: 'openai' | 'heuristic';
 }
@@ -192,6 +193,52 @@ const AIGovernance: React.FC = () => {
   const incidentTrendMax = insights?.incident_trend.length
     ? Math.max(...insights.incident_trend.map((point) => point.value), 1)
     : 1;
+  const severityTrendMax = insights?.severity_trend.length
+    ? Math.max(
+        ...insights.severity_trend.map((point) => point.critical + point.high + point.medium + point.low),
+        1
+      )
+    : 1;
+
+  const handleExportTrends = (format: 'json' | 'csv') => {
+    if (!insights) return;
+
+    const exportData = insights.trend_metrics.map((metric, idx) => {
+      const incident = insights.incident_trend[idx];
+      const severity = insights.severity_trend[idx];
+      return {
+        date: metric.label,
+        metrics_count: metric.value,
+        incidents_count: incident?.value ?? 0,
+        critical: severity?.critical ?? 0,
+        high: severity?.high ?? 0,
+        medium: severity?.medium ?? 0,
+        low: severity?.low ?? 0,
+      };
+    });
+
+    let blob: Blob;
+    let filename: string;
+
+    if (format === 'json') {
+      blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      filename = 'ai-governance-trends.json';
+    } else {
+      const header = 'date,metrics_count,incidents_count,critical,high,medium,low';
+      const rows = exportData
+        .map((row) => `${row.date},${row.metrics_count},${row.incidents_count},${row.critical},${row.high},${row.medium},${row.low}`)
+        .join('\n');
+      blob = new Blob([`${header}\n${rows}`], { type: 'text/csv' });
+      filename = 'ai-governance-trends.csv';
+    }
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <Container fluid className="page-container px-4">
@@ -226,9 +273,17 @@ const AIGovernance: React.FC = () => {
                       <div className="chart-title">AI Governance Tracking</div>
                       <div className="chart-subtitle">Automated risk summary and highlights</div>
                     </div>
-                    <Button variant="outline-secondary" size="sm" onClick={fetchInsights}>
-                      Refresh
-                    </Button>
+                    <div className="d-flex gap-2">
+                      <Button variant="outline-secondary" size="sm" onClick={fetchInsights}>
+                        Refresh
+                      </Button>
+                      <Button variant="outline-primary" size="sm" onClick={() => handleExportTrends('json')}>
+                        Export JSON
+                      </Button>
+                      <Button variant="outline-primary" size="sm" onClick={() => handleExportTrends('csv')}>
+                        Export CSV
+                      </Button>
+                    </div>
                   </div>
 
                   {insightsLoading && (
@@ -327,6 +382,53 @@ const AIGovernance: React.FC = () => {
                         {insights.incident_trend.map((point, idx) => (
                           <span key={idx}>{point.label}</span>
                         ))}
+                      </div>
+                    </>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+          <Row className="page-section">
+            <Col md={12}>
+              <Card className="chart-card">
+                <Card.Body>
+                  <div className="chart-header">
+                    <div>
+                      <div className="chart-title">Stacked Severity Trend</div>
+                      <div className="chart-subtitle">Critical, High, Medium, Low (7 days)</div>
+                    </div>
+                  </div>
+                  {insightsLoading && (
+                    <div className="text-center py-4">
+                      <Spinner animation="border" variant="primary" size="sm" />
+                    </div>
+                  )}
+                  {!insightsLoading && !insightsError && insights && (
+                    <>
+                      <div className="d-flex align-items-end gap-2 mt-3" style={{ height: '120px' }}>
+                        {insights.severity_trend.map((point, idx) => {
+                          const total = point.critical + point.high + point.medium + point.low;
+                          const safeTotal = total || 1;
+                          const scale = total > 0 ? total / severityTrendMax : 0;
+                          return (
+                            <div key={idx} className="d-flex flex-column-reverse" style={{ width: '100%', height: '100%' }}>
+                              <div style={{ height: `${Math.round(scale * 100)}%`, display: 'flex', flexDirection: 'column-reverse' }}>
+                                <span style={{ height: `${(point.critical / safeTotal) * 100}%`, backgroundColor: '#1f1f1f' }} />
+                                <span style={{ height: `${(point.high / safeTotal) * 100}%`, backgroundColor: '#ffb020' }} />
+                                <span style={{ height: `${(point.medium / safeTotal) * 100}%`, backgroundColor: '#4da3ff' }} />
+                                <span style={{ height: `${(point.low / safeTotal) * 100}%`, backgroundColor: '#5ad06a' }} />
+                              </div>
+                              <div className="text-muted small text-center mt-1">{point.label}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="d-flex justify-content-end gap-3 text-muted small mt-3">
+                        <span>Critical</span>
+                        <span>High</span>
+                        <span>Medium</span>
+                        <span>Low</span>
                       </div>
                     </>
                   )}
